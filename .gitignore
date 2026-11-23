@@ -1,6 +1,21 @@
+<<<<<<< HEAD
 build/
 .gradle/
 .idea/
 terrain-cache/
 *.apk
 *.zip
+=======
+/.gradle/
+/.nb-gradle/
+build/
+**/build/
+/private/
+/*.dll
+/*.dylib
+/*.so
+
+/.idea/
+
+local.properties
+>>>>>>> source/main
