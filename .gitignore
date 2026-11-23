@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-build/
-.gradle/
-.idea/
-terrain-cache/
-*.apk
-*.zip
-=======
 /.gradle/
 /.nb-gradle/
 build/
@@ -18,4 +10,3 @@ build/
 /.idea/
 
 local.properties
->>>>>>> source/main
