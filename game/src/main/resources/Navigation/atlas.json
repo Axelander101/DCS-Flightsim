@@ -1,0 +1,110 @@
+[
+  {
+    "name": "overview",
+    "west": 2480000,
+    "south": 1070000,
+    "east": 2832000,
+    "north": 1312000,
+    "width": 4096,
+    "height": 2816
+  },
+  {
+    "name": "MEIRINGEN",
+    "west": 2634856,
+    "south": 1160616,
+    "east": 2667624,
+    "north": 1193384,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "EMMEN",
+    "west": 2649436,
+    "south": 1199636,
+    "east": 2682204,
+    "north": 1232404,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "PAYERNE",
+    "west": 2543566,
+    "south": 1171676,
+    "east": 2576334,
+    "north": 1204444,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "ZURICH",
+    "west": 2667276,
+    "south": 1240576,
+    "east": 2700044,
+    "north": 1273344,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "GENEVA",
+    "west": 2481056,
+    "south": 1105226,
+    "east": 2513824,
+    "north": 1137994,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "BASEL",
+    "west": 2589816,
+    "south": 1255846,
+    "east": 2622584,
+    "north": 1288614,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "BERN",
+    "west": 2588146,
+    "south": 1179456,
+    "east": 2620914,
+    "north": 1212224,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "ALTENRHEIN",
+    "west": 2743626,
+    "south": 1245136,
+    "east": 2776394,
+    "north": 1277904,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "LUGANO",
+    "west": 2697616,
+    "south": 1079356,
+    "east": 2730384,
+    "north": 1112124,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "SION",
+    "west": 2574996,
+    "south": 1102256,
+    "east": 2607764,
+    "north": 1135024,
+    "width": 2048,
+    "height": 2048
+  },
+  {
+    "name": "GRENCHEN",
+    "west": 2581926,
+    "south": 1209216,
+    "east": 2614694,
+    "north": 1241984,
+    "width": 2048,
+    "height": 2048
+  }
+]

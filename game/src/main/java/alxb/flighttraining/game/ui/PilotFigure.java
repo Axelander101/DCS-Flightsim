@@ -83,7 +83,7 @@ final class PilotFigure {
             Vector3f ankle=foot.add(bootRotation.mult(new Vector3f(0,.045f,-.005f)));
             Vector3f hip=new Vector3f(sign*.075f,.275f,-1.70f);
             Vector3f knee=solveJoint(hip,ankle,.32f,.30f,new Vector3f(sign*.11f,.50f,-2.02f));
-            segment(thighs[i],hip,knee,.059f);segment(shins[i],knee,ankle,.044f);
+            segment(thighs[i],hip,knee,.069f);segment(shins[i],knee,ankle,.048f);
             boots[i].setLocalTranslation(foot);boots[i].setLocalRotation(bootRotation);boots[i].setLocalScale(1);
         }
         skin.getArmature().update();

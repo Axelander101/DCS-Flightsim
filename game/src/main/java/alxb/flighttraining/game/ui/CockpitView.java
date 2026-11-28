@@ -16,7 +16,7 @@ import java.util.*;
 public final class CockpitView {
     public static final Vector3f EYE = new Vector3f(0f, .62f, -1.8f);
     private final Node plane, instruments = new Node("CockpitInstruments"), model;
-    private static final float FOV = 65f, WORLD_NEAR = 1f, COCKPIT_NEAR = .01f, COCKPIT_FAR = 10f;
+    private static final float FOV = 60f, WORLD_NEAR = 1f, COCKPIT_NEAR = .01f, COCKPIT_FAR = 10f;
     private final Camera camera, cockpitCamera;
     private final Vector3f eyeInAircraft;
     private final DirectionalLight cockpitSun;
@@ -44,7 +44,7 @@ public final class CockpitView {
         model.rotate(0, FastMath.PI, 0); model.setLocalScale(.5f);
         CockpitMaterials.prepare(assets, model);
         instruments.attachChild(model);
-        instruments.addLight(new AmbientLight(new ColorRGBA(.58f, .62f, .66f, 1)));
+        instruments.addLight(new AmbientLight(new ColorRGBA(.35f, .38f, .42f, 1)));
         cockpitSun = new DirectionalLight(worldSun.clone(), new ColorRGBA(1.15f, 1.1f, 1.04f, 1));
         instruments.addLight(cockpitSun);
         pilotEye = required("PilotEye");

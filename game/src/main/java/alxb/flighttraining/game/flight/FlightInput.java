@@ -12,6 +12,7 @@ import com.jme3.input.controls.KeyTrigger;
 
 public final class FlightInput {
     private final InputManager inputManager;
+    private ActionListener systemListener;
 
     // Controller
     public float rollInput = 0f;
@@ -34,11 +35,13 @@ public final class FlightInput {
 
     public boolean wheelBrake;
     private boolean flightControlsEnabled;
-    private int systemCommands;
+    private int systemCommands, navigationCommands;
+    public int drainNavigationCommands(){int result=navigationCommands;navigationCommands=0;return result;}
     public void setFlightControlsEnabled(boolean enabled) {
         flightControlsEnabled=enabled;
-        if(!enabled){systemCommands=0;wheelBrake=false;}
+        if(!enabled){systemCommands=navigationCommands=0;wheelBrake=false;}
     }
+    public int peekSystemCommands(){return systemCommands;}
     public int drainSystemCommands(){int value=systemCommands;systemCommands=0;return value;}
 
     public boolean shoot;
@@ -49,34 +52,49 @@ public final class FlightInput {
         configureJoystick();
         configureKeyboard();
         String[] names={"AircraftGear","AircraftAirbrake","AircraftFlaps","AircraftParkingBrake",
-                "AircraftCanopy","AircraftHook","AircraftFold","AircraftEngine","AircraftDisplayPage","AircraftDisplayDetail","AircraftWheelBrake"};
+                "AircraftCanopy","AircraftHook","AircraftFold","AircraftEngine","AircraftDisplayPage","AircraftDisplayDetail","AircraftWheelBrake","NavZoomIn","NavZoomOut","NavOrientation","NavNextAirfield","AircraftRadar","AircraftMasterArm","AircraftNextTarget","AircraftLockTarget","AircraftCountermeasures","AircraftFireLeft","AircraftFireRight","AircraftDischarge","AircraftEngineLeft","AircraftEngineRight","AircraftDamagePage"};
         int[] keys={KeyInput.KEY_G,KeyInput.KEY_X,KeyInput.KEY_L,KeyInput.KEY_P,
-                KeyInput.KEY_C,KeyInput.KEY_H,KeyInput.KEY_K,KeyInput.KEY_I,KeyInput.KEY_V,KeyInput.KEY_TAB,KeyInput.KEY_B};
-        for(int i=0;i<names.length;i++) inputManager.addMapping(names[i],new KeyTrigger(keys[i]));
+                KeyInput.KEY_C,KeyInput.KEY_H,KeyInput.KEY_K,KeyInput.KEY_I,KeyInput.KEY_V,KeyInput.KEY_TAB,KeyInput.KEY_B,KeyInput.KEY_EQUALS,KeyInput.KEY_MINUS,KeyInput.KEY_O,KeyInput.KEY_N};
+        for(int i=0;i<names.length;i++) inputManager.addMapping(names[i],new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key(names[i])));
         ActionListener systems=(name,pressed,tpf)->{
             if(name.equals("AircraftWheelBrake")){wheelBrake=pressed && flightControlsEnabled;return;}
             if(!pressed || !flightControlsEnabled)return;
             for(int i=0;i<10;i++)if(names[i].equals(name)){systemCommands|=1<<i;break;}
+            for(int i=11;i<15;i++)if(names[i].equals(name)){navigationCommands|=1<<(i-11);break;}
+            for(int i=15;i<names.length;i++)if(names[i].equals(name)){systemCommands|=1<<(i-5);break;}
         };
+        systemListener=systems;
         inputManager.addListener(systems,names);
     }
 
+    public void reloadKeyboard(){
+        pitchUp=pitchDown=rollLeft=rollRight=yawLeft=yawRight=throttleUp=throttleDown=shoot=infraredMissile=wheelBrake=false;
+        String[] flight={"PitchUp","PitchDown","RollLeft","RollRight","YawLeft","YawRight","ThrottleUp","ThrottleDown","Shoot","InfraredMissile"};
+        String[] systems={"AircraftGear","AircraftAirbrake","AircraftFlaps","AircraftParkingBrake","AircraftCanopy","AircraftHook","AircraftFold","AircraftEngine","AircraftDisplayPage","AircraftDisplayDetail","AircraftWheelBrake","NavZoomIn","NavZoomOut","NavOrientation","NavNextAirfield","AircraftRadar","AircraftMasterArm","AircraftNextTarget","AircraftLockTarget","AircraftCountermeasures","AircraftFireLeft","AircraftFireRight","AircraftDischarge","AircraftEngineLeft","AircraftEngineRight","AircraftDamagePage"};
+        var profile=alxb.flighttraining.game.config.GameSettings.get();
+        for(String action:alxb.flighttraining.game.config.GameSettings.DEFAULT_KEYS.keySet()){
+            if(inputManager.hasMapping(action))inputManager.deleteMapping(action);
+            inputManager.addMapping(action,new KeyTrigger(profile.key(action)));
+        }
+        inputManager.addListener(actionListener,flight);inputManager.addListener(systemListener,systems);resetControllerInput();
+    }
+
     private void configureKeyboard() {
-        inputManager.addMapping("PitchUp", new KeyTrigger(KeyInput.KEY_W));
-        inputManager.addMapping("PitchDown", new KeyTrigger(KeyInput.KEY_S));
+        inputManager.addMapping("PitchUp", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("PitchUp")));
+        inputManager.addMapping("PitchDown", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("PitchDown")));
 
-        inputManager.addMapping("RollLeft", new KeyTrigger(KeyInput.KEY_A));
-        inputManager.addMapping("RollRight", new KeyTrigger(KeyInput.KEY_D));
+        inputManager.addMapping("RollLeft", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("RollLeft")));
+        inputManager.addMapping("RollRight", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("RollRight")));
 
-        inputManager.addMapping("YawLeft", new KeyTrigger(KeyInput.KEY_Q));
-        inputManager.addMapping("YawRight", new KeyTrigger(KeyInput.KEY_E));
+        inputManager.addMapping("YawLeft", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("YawLeft")));
+        inputManager.addMapping("YawRight", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("YawRight")));
 
-        inputManager.addMapping("ThrottleUp", new KeyTrigger(KeyInput.KEY_R));
-        inputManager.addMapping("ThrottleDown", new KeyTrigger(KeyInput.KEY_F));
+        inputManager.addMapping("ThrottleUp", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("ThrottleUp")));
+        inputManager.addMapping("ThrottleDown", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("ThrottleDown")));
 
 
-        inputManager.addMapping("Shoot", new KeyTrigger(KeyInput.KEY_SPACE));
-        inputManager.addMapping("InfraredMissile", new KeyTrigger(KeyInput.KEY_M));
+        inputManager.addMapping("Shoot", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("Shoot")));
+        inputManager.addMapping("InfraredMissile", new KeyTrigger(alxb.flighttraining.game.config.GameSettings.get().key("InfraredMissile")));
 
         inputManager.addListener(actionListener,
                 "PitchUp",
@@ -93,96 +111,27 @@ public final class FlightInput {
     }
 
     private void configureJoystick() {
-        inputManager.addJoystickConnectionListener(
-                new JoystickConnectionListener() {
-                    @Override
-                    public void onConnected(Joystick joystick) {
-                        JoystickAxis rollAxis = null;
-                        JoystickAxis pitchAxis = null;
-                        JoystickAxis yawAxis = null;
-                        JoystickAxis leftTriggerAxis = null;
-                        JoystickAxis rightTriggerAxis = null;
-
-                        for (JoystickAxis axis : joystick.getAxes()) {
-                            if (axis.getLogicalId().equals("x")) {
-                                rollAxis = axis;
-                            }
-                            if (axis.getLogicalId().equals("y")) {
-                                pitchAxis = axis;
-                            }
-                            if (axis.getLogicalId().equals("z")) {
-                                yawAxis = axis;
-                            }
-
-                            if (axis.getLogicalId().equals("ry")) {
-                                leftTriggerAxis = axis;
-                            }
-
-                            if (axis.getLogicalId().equals("rx")) {
-                                rightTriggerAxis = axis;
-                            }
-                        }
-
-                        if (rollAxis != null && pitchAxis != null && yawAxis != null && leftTriggerAxis != null && rightTriggerAxis != null) {
-                            inputManager.addMapping(
-                                    "RollLeftController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), rollAxis.getAxisId(), false)
-                            );
-
-                            inputManager.addMapping(
-                                    "RollRightController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), rollAxis.getAxisId(), true)
-                            );
-
-                            inputManager.addMapping(
-                                    "YawLeftController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), yawAxis.getAxisId(), false)
-                            );
-
-                            inputManager.addMapping(
-                                    "YawRightController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), yawAxis.getAxisId(), true)
-                            );
-
-                            inputManager.addMapping(
-                                    "PitchUpController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), pitchAxis.getAxisId(), true)
-                            );
-
-                            inputManager.addMapping(
-                                    "PitchDownController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), pitchAxis.getAxisId(), false)
-                            );
-
-                            inputManager.addMapping(
-                                    "ThrottleUpController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), leftTriggerAxis.getAxisId(), false)
-                            );
-
-                            inputManager.addMapping(
-                                    "ThrottleDownController",
-                                    new JoyAxisTrigger(joystick.getJoyId(), rightTriggerAxis.getAxisId(), false)
-                            );
-                        }
-
-                        inputManager.addListener(
-                                controllerListener,
-                                "RollLeftController",
-                                "RollRightController",
-                                "PitchUpController",
-                                "PitchDownController",
-                                "YawLeftController",
-                                "YawRightController",
-                                "ThrottleUpController",
-                                "ThrottleDownController"
-                        );
-                    }
-
-                    @Override
-                    public void onDisconnected(Joystick joystick) {
-                    }
-                }
-        );
+        inputManager.addListener(controllerListener,"RollLeftController","RollRightController","PitchUpController","PitchDownController","YawLeftController","YawRightController","ThrottleUpController","ThrottleDownController");
+        inputManager.addJoystickConnectionListener(new JoystickConnectionListener(){
+            public void onConnected(Joystick joystick){bindJoystick(joystick);}
+            public void onDisconnected(Joystick joystick){resetControllerInput();}
+        });
+        Joystick[] devices=inputManager.getJoysticks();if(devices!=null)for(Joystick joystick:devices)bindJoystick(joystick);
+    }
+    private void bindJoystick(Joystick joystick){
+        // Bind each available axis independently: a two-axis stick must not require five axes.
+        for(JoystickAxis axis:joystick.getAxes()){
+            String id=axis.getLogicalId();
+            if(id.equals("x")){axis(joystick,axis,"RollLeftController",false);axis(joystick,axis,"RollRightController",true);}
+            else if(id.equals("y")){axis(joystick,axis,"PitchUpController",true);axis(joystick,axis,"PitchDownController",false);}
+            else if(id.equals("z")||id.equals("rz")){axis(joystick,axis,"YawLeftController",false);axis(joystick,axis,"YawRightController",true);}
+            else if(id.equals("ry"))axis(joystick,axis,"ThrottleUpController",false);
+            else if(id.equals("rx"))axis(joystick,axis,"ThrottleDownController",false);
+        }
+    }
+    private void axis(Joystick joystick,JoystickAxis axis,String action,boolean negative){
+        inputManager.addMapping(action,new JoyAxisTrigger(joystick.getJoyId(),axis.getAxisId(),negative));
+        inputManager.addListener(controllerListener,action);
     }
 
     private final ActionListener actionListener = (name, isPressed, tpf) -> {
@@ -230,11 +179,8 @@ public final class FlightInput {
     };
 
     private final AnalogListener controllerListener = (name, value, tpf) -> {
-        float stickValue = value / tpf;
-
-        if (stickValue < 0.05f) {
-            stickValue = 0f;
-        }
+        if(!flightControlsEnabled||!Float.isFinite(tpf)||tpf<=0)return;
+        float stickValue=Math.max(0,Math.min(1,value/tpf));
 
         switch (name) {
             case "RollLeftController":
@@ -254,11 +200,11 @@ public final class FlightInput {
                 break;
 
             case "PitchUpController":
-                pitchInput = -stickValue;
+                pitchInput = stickValue;
                 break;
 
             case "PitchDownController":
-                pitchInput = stickValue;
+                pitchInput = -stickValue;
                 break;
 
             case "ThrottleUpController":

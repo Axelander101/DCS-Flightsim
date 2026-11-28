@@ -1,0 +1,6 @@
+DSC cockpit and pilot revision, 2026-11-26
+Original authored F/A-18C-inspired approximation based on the supplied cockpit reference; not a measured replica or a complete aircraft systems simulation.
+Cockpit: expanded console groups, legends, switches, fasteners, seals, display surrounds and material shading. Existing live screens and named control pivots retained. Additional small switches are decorative.
+Pilot: connected animated torso and arms, tailored sleeves, anti-G trouser panels, pockets, straps, gloves, shaped boots, helmet, mask and breathing hose. First-person rendering hides the own head. Existing stick/throttle hand anchors and IK retained.
+Material textures created with OpenAI built-in image generation; original lettering and kneeboard artwork authored locally. Small-scale cavity shading baked into vertex colors. No extra runtime AO pass or dependency.
+Editable Blender source and exact texture prompt are included in the accompanying update archive. This is a game asset approximation; it does not claim photographic fidelity.

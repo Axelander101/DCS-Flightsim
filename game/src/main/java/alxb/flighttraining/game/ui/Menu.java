@@ -1,940 +1,225 @@
 package alxb.flighttraining.game.ui;
 
-import alxb.flighttraining.game.config.DogfightSettings;
 import alxb.flighttraining.game.FlightTraining;
-import alxb.flighttraining.game.config.SpawnSettings;
-
+import alxb.flighttraining.game.config.*;
 import com.jme3.asset.AssetManager;
-import com.jme3.input.InputManager;
-import com.jme3.input.MouseInput;
-import com.jme3.input.controls.MouseAxisTrigger;
-import com.jme3.input.controls.MouseButtonTrigger;
-import com.jme3.math.Vector2f;
+import com.jme3.input.*;
+import com.jme3.input.controls.*;
+import com.jme3.input.event.KeyInputEvent;
 import com.jme3.scene.Node;
 import com.jme3.texture.Texture2D;
 import com.jme3.texture.plugins.AWTLoader;
 import com.jme3.ui.Picture;
-
 import java.awt.*;
-
-import com.jme3.input.controls.ActionListener;
-import com.jme3.input.controls.AnalogListener;
-import com.jme3.scene.control.AbstractControl;
-import com.jme3.renderer.RenderManager;
-import com.jme3.renderer.ViewPort;
 import java.awt.image.BufferedImage;
+import java.util.*;
+import java.util.List;
 
-
-public class Menu{
-
-    private final Picture picture;
-    private final DogfightUI dogfightUI = new DogfightUI();
+/** Simulator launcher. Every clickable region comes from the geometry used to draw it. */
+public final class Menu {
+    private enum Screen { MAIN,MISSIONS,SETTINGS,GRAPHICS_SETTINGS,STEERING_SETTINGS,GAMEPLAY_SETTINGS,AUDIO_SETTINGS,INTERFACE_SETTING,MULTIPLAYER,PILOT_PROFILE,ACCOUNT,FRIENDS,FREE_PLAY,DOGFIGHT_AI }
+    private static final String[] AIRPORTS={"Zürich","Genf","Basel-Mulhouse","Bern-Belp","St. Gallen-Altenrhein","Lugano-Agno","Sion","Grenchen","Payerne","Meiringen","Emmen"};
+    private static final String[] CODES={"LSZH","LSGG","LFSB","LSZB","LSZR","LSZA","LSGS","LSZG","LSMP","LSMM","LSME"};
+    private static final String[] MISSION_NAMES={"Familiarisation","Navigation","Intercept","Dogfight","Patrol","Escort"};
+    private static final String[] MISSION_DETAILS={"Learn the Hornet and practise aircraft handling at your chosen airfield.","Practise visual navigation between Swiss airfields.","Identify and intercept an airborne target.","Configure an opponent, starting range and difficulty for air combat training.","Follow a patrol route and monitor the surrounding airspace.","Protect a friendly aircraft along its route."};
+    private static final String[] CATEGORIES={"Graphics","Controls","Gameplay","Audio","Interface"};
     private final AssetManager menuAssets;
-    private int menuWidth, menuHeight;
-
-
-    private boolean menuOffen = true;
-
     private final FlightTraining app;
     private final InputManager input;
-
-    private boolean freePlayOffen = false;
-
-    private Color hellBlau = new Color(50, 100, 160);
-
-    private final java.util.Map<String, BufferedImage> airportImages =
-            new java.util.HashMap<>();
-
-    private static final String[] AIRPORTS = {
-            "Zürich", "Genf", "Basel-Mulhouse",
-            "Bern-Belp", "St. Gallen-Altenrhein", "Lugano-Agno",
-            "Sion", "Grenchen", "Payerne",
-            "Meiringen", "Emmen"
-    };
-
-    private static final java.util.Map<String, String> AIRPORT_IMAGE_CODES = java.util.Map.ofEntries(
-            java.util.Map.entry("Zürich", "LSZH"),
-            java.util.Map.entry("Genf", "LSGG"),
-            java.util.Map.entry("Basel-Mulhouse", "LFSB"),
-            java.util.Map.entry("Bern-Belp", "LSZB"),
-            java.util.Map.entry("St. Gallen-Altenrhein", "LSZR"),
-            java.util.Map.entry("Lugano-Agno", "LSZA"),
-            java.util.Map.entry("Sion", "LSGS"),
-            java.util.Map.entry("Grenchen", "LSZG"),
-            java.util.Map.entry("Payerne", "LSMP"),
-            java.util.Map.entry("Meiringen", "LSMM"),
-            java.util.Map.entry("Emmen", "LSME")
-    );
-
-    private static final String[] MISSIONS = {
-            "Trainingsflug",
-            "Navigation",
-            "Abfangen",
-            "Dogfight",
-            "Patrouille",
-            "Begleitschutz"
-    };
-
-    private static final String[] MISSION_DESCRIPTIONS = {
-            "Lerne dein Flugzeug kennen.",
-            "Fliege die vorgegebene Route.",
-            "Erreiche und identifiziere das Ziel.",
-            "Bestehe im direkten Luftkampf.",
-            "Überwache den zugewiesenen Luftraum.",
-            "Begleite ein verbündetes Flugzeug."
-    };
-
-    private static final String[] GRAPHICS_SETTING = {
-            "Resolution", "Fullscreen", "VSync",
-            "FPS limit", "Anti-aliasing", "Texture quality",
-            "Terrain quality", "Render distance", "Shadow quality",
-            "Vegetation density", "Building quality", "Cloud quality",
-            "Particle quality", "Water quality", "Anisotropic filtering"
-    };
-
-    private static final String[] RESOLUTIONS = {
-            "1280x720",
-            "1600x900",
-            "1920x1080",
-            "2560x1440",
-            "3840x2160"
-    };
-
-    private float displayedAudioVolume=-1;
-    private final java.awt.Rectangle audioMinus=new java.awt.Rectangle(),audioPlus=new java.awt.Rectangle(),audioMute=new java.awt.Rectangle();
-    private final java.util.List<java.awt.Rectangle> missionBounds =
-            new java.util.ArrayList<>();
-
-    private final java.awt.Rectangle fpsBounds =
-            new java.awt.Rectangle();
-
-    private final java.util.List<java.awt.Rectangle> airportBounds =
-            new java.util.ArrayList<>();
-
-    private final java.util.List<java.awt.Rectangle> settingsBounds =
-            new java.util.ArrayList<>();
-
-    private final java.util.List<java.awt.Rectangle> graphicsBounds =
-            new java.util.ArrayList<>();
-
-    private final java.awt.Rectangle backBounds =
-            new java.awt.Rectangle();
-
-    private boolean showFps = false;
-
-    private float scrollOffset = 0;
-    private static final int GRAPHICS_ROW_HEIGHT = 60;
-    private static final int GRAPHICS_ROW_GAP = 16;
-    private static final int GRAPHICS_TOP = 125;
-    private static final int GRAPHICS_BOTTOM = 40;
-    private final Rectangle graphicsViewport = new Rectangle();
-    private boolean graphicsRedrawPending;
-
-
-    private String currenRes = "1920x1080";
-
-    private enum Screen {
-        MAIN,
-        MISSIONS,
-        SETTINGS,
-        GRAPHICS_SETTINGS,
-        STEERING_SETTINGS,
-        GAMEPLAY_SETTINGS,
-        AUDIO_SETTINGS,
-        INTERFACE_SETTING,
-        MULTIPLAYER,
-        FREE_PLAY,
-        DOGFIGHT_AI
+    private final Picture picture=new Picture("MainMenu");
+    private final SettingsPanel settingsPanel;
+    private final MultiplayerPanel multiplayerPanel;
+    private final PilotProfilePanel pilotPanel;
+    private final AccountPanel accountPanel;
+    private final FriendsPanel friendsPanel;
+    private long accountRevision=-1;
+    private long pilotRevision=-1;
+    private final DogfightUI dogfightUI=new DogfightUI();
+    private final Map<String,Rectangle> hits=new LinkedHashMap<>();
+    private final Map<String,BufferedImage> airportImages=new HashMap<>();
+    private Screen screen=Screen.MAIN;
+    private boolean menuOffen=true,dirty,quitConfirm;
+    private int selectedAirport,selectedMission,menuWidth,menuHeight;
+    private float scale=1,offsetX,offsetY,paintClock;
+    private String hover="";
+    private float pointerX=Float.NaN,pointerY=Float.NaN;
+    private long profileRevision=-1;
+    public Menu(AssetManager assets,int width,int height,FlightTraining app,InputManager input){
+        this.menuAssets=assets;this.app=app;this.input=input;menuWidth=width;menuHeight=height;settingsPanel=new SettingsPanel(app);multiplayerPanel=new MultiplayerPanel(app.getMultiplayer(),app.getIdentityProvider());pilotPanel=new PilotProfilePanel(app.getPilotProfiles());accountPanel=new AccountPanel(app.getAccounts());friendsPanel=new FriendsPanel(app.getFriends(),app.getMultiplayer(),()->go(Screen.ACCOUNT));
+        for(int i=0;i<AIRPORTS.length;i++)airportImages.put(CODES[i],MenuImages.load(assets,CODES[i],AIRPORTS[i]));
+        if(app.getAccounts().view().configured())screen=Screen.ACCOUNT;
+        picture.setPosition(0,0);redraw();
+        input.addMapping("MenuClick",new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        input.addMapping("ScrollUp",new MouseAxisTrigger(MouseInput.AXIS_WHEEL,false));input.addMapping("ScrollDown",new MouseAxisTrigger(MouseInput.AXIS_WHEEL,true));
+        input.addListener((ActionListener)(name,pressed,tpf)->{if(!pressed||!menuOffen)return;var cursor=input.getCursorPosition();click((cursor.x-offsetX)/scale,(app.getCamera().getHeight()-cursor.y-offsetY)/scale);},"MenuClick");
+        input.addListener((AnalogListener)(name,value,tpf)->{if(menuOffen&&settingsScreen()&&settingsPanel.scroll((name.equals("ScrollDown")?1:-1)*value*50/scale))dirty=true;},"ScrollUp","ScrollDown");
+        input.addRawInputListener(new RawInputListenerAdapter(){@Override public void onKeyEvent(KeyInputEvent event){
+            if(!menuOffen||event.isConsumed())return;
+            if(screen==Screen.FRIENDS&&friendsPanel.key(event)){event.setConsumed();return;}
+            if(screen==Screen.ACCOUNT&&accountPanel.key(event)){event.setConsumed();return;}
+            if(app.getAccounts().view().busy()){event.setConsumed();return;}
+            if(screen==Screen.PILOT_PROFILE&&pilotPanel.key(event)){event.setConsumed();return;}
+            if(screen==Screen.MULTIPLAYER&&multiplayerPanel.key(event)){event.setConsumed();return;}
+            if(!event.isPressed()||event.isRepeating())return;
+            if(event.getKeyCode()==KeyInput.KEY_ESCAPE){event.setConsumed();if(quitConfirm)quitConfirm=false;else if(screen==Screen.MAIN)quitConfirm=true;else go(screen==Screen.FRIENDS&&app.getMultiplayer().view().state()==alxb.flighttraining.game.network.MultiplayerSession.State.CONNECTED?Screen.MULTIPLAYER:settingsScreen()?Screen.SETTINGS:Screen.MAIN);dirty=true;}
+            else if(event.getKeyCode()==KeyInput.KEY_TAB){event.setConsumed();List<String> ids=new ArrayList<>(hits.keySet());if(!ids.isEmpty())hover=ids.get((ids.indexOf(hover)+1)%ids.size());dirty=true;}
+            else if(event.getKeyCode()==KeyInput.KEY_RETURN&&!hover.isEmpty()){event.setConsumed();activate(hover);}
+        }});
     }
-
-
-    private enum GraphicsSettings {
-        RESOLUTION,
-        FULLSCREEN,
-        VSYNC,
-        FPS_LIMIT,
-        ANTIALIASING,
-        TEXTURE_QUALITY,
-        TERRAIN_QUALITY,
-        RENDER_DISTANCE,
-        SHADOW_QUALITY,
-        VEGETATION_DENSITY,
-        BUILDING_QUALITY,
-        CLOUD_QUALITY,
-        PARTICLE_QUALITY,
-        WATER_QUALITY,
-        ANISOTOPIC_FILTERING
+    private boolean settingsScreen(){return switch(screen){case GRAPHICS_SETTINGS,STEERING_SETTINGS,GAMEPLAY_SETTINGS,AUDIO_SETTINGS,INTERFACE_SETTING->true;default->false;};}
+    private String settingsPage(){return switch(screen){case GRAPHICS_SETTINGS->"Graphics";case STEERING_SETTINGS->"Controls";case GAMEPLAY_SETTINGS->"Gameplay";case AUDIO_SETTINGS->"Audio";default->"Interface";};}
+    private void category(String name){go(switch(name){case "Graphics"->Screen.GRAPHICS_SETTINGS;case "Controls"->Screen.STEERING_SETTINGS;case "Gameplay"->Screen.GAMEPLAY_SETTINGS;case "Audio"->Screen.AUDIO_SETTINGS;default->Screen.INTERFACE_SETTING;});}
+    private void go(Screen value){if((screen==Screen.MULTIPLAYER||screen==Screen.FRIENDS)&&value!=Screen.MULTIPLAYER&&value!=Screen.FRIENDS)app.getMultiplayer().leave();multiplayerPanel.leave();pilotPanel.leave();accountPanel.leave();friendsPanel.leave();settingsPanel.leave();screen=value;if(value==Screen.PILOT_PROFILE)pilotPanel.open();if(value==Screen.ACCOUNT)accountPanel.open();if(value==Screen.FRIENDS)friendsPanel.open();hover="";quitConfirm=false;redraw();}
+    private String hit(float x,float y){for(var entry:hits.entrySet())if(entry.getValue().contains(x,y))return entry.getKey();return "";}
+    private void click(float x,float y){
+        String action=hit(x,y);
+        if(!action.isEmpty()){if(app.getGameAudio()!=null)app.getGameAudio().uiClick();activate(action);}
+        else if(screen==Screen.FRIENDS&&!quitConfirm){friendsPanel.click(x,y);dirty=true;}
+        else if(screen==Screen.ACCOUNT&&!quitConfirm){accountPanel.click(x,y);dirty=true;}
+        else if(screen==Screen.PILOT_PROFILE&&!quitConfirm){pilotPanel.click(x,y);dirty=true;}
+        else if(screen==Screen.MULTIPLAYER&&!quitConfirm){multiplayerPanel.click(x,y);dirty=true;}
+        else if(settingsScreen()&&!quitConfirm){if(settingsPanel.click(x-310,y-158))go(Screen.SETTINGS);else dirty=true;}
     }
-
-    private Screen screen = Screen.MAIN;
-
-    public Menu(AssetManager assets, int width, int height, FlightTraining app, InputManager input) {
-        this.app = app;
-        this.input = input;
-        menuAssets = assets;
-        menuWidth = width; menuHeight = height;
-
-        for (String airport : AIRPORTS) {
-            airportImages.put(
-                    airport,
-                    MenuImages.load(menuAssets, AIRPORT_IMAGE_CODES.get(airport), airport)
-            );
-        }
-
-        picture = new Picture("MainMenu");
-        picture.setWidth(width);
-        picture.setHeight(height);
-        picture.setPosition(0, 0);
-
-        redraw();
-
-
-        //Mouse klicks
-        app.getInputManager().addMapping(
-                "MenuClick",
-                new MouseButtonTrigger(MouseInput.BUTTON_LEFT)
-        );
-
-        app.getInputManager().addMapping(
-                "ScrollUp",
-                new MouseAxisTrigger(
-                        MouseInput.AXIS_WHEEL,
-                        false
-                )
-        );
-
-        app.getInputManager().addMapping(
-                "ScrollDown",
-                new MouseAxisTrigger(
-                        MouseInput.AXIS_WHEEL,
-                        true
-                )
-        );
-
-        ActionListener clickListener = (name, isPressed, tpf) -> {
-            if (!isPressed || !menuOffen) {
-                return;
-            }
-
-            if(app.getGameAudio()!=null)app.getGameAudio().uiClick();
-            Vector2f cursor = app.getInputManager().getCursorPosition();
-
-            float mouseX = cursor.x;
-
-            // jME: unten → Graphics2D: oben
-            float mouseY = app.getCamera().getHeight() - cursor.y;
-
-
-            // Mausklicks – innerhalb deines ActionListeners
-            switch (screen) {
-                case MAIN -> {
-                    if (mouseX >= 80 && mouseX <= 380) {
-                        if (mouseY >= 180 && mouseY <= 250) {
-                            screen = Screen.MISSIONS;
-                            redraw();
-
-                        } else if (mouseY >= 270 && mouseY <= 340) {
-                            screen = Screen.FREE_PLAY;
-                            redraw();
-
-                        } else if (mouseY >= 360 && mouseY <= 430) {
-                            screen = Screen.SETTINGS;
-                            redraw();
-
-                        } else if (mouseY >= 540 && mouseY <= 610) {
-                            screen = Screen.DOGFIGHT_AI;
-                            redraw();
-
-                        }else if (mouseY >= 620 && mouseY <= 690){
-                            app.stop();
-                        }
-
-                    }
-                }
-
-                case FREE_PLAY -> {
-                    if (backBounds.contains(mouseX, mouseY)) {
-                        screen = Screen.MAIN;
-                        redraw();
-                        return;
-                    }
-
-                    for (int i = 0; i < airportBounds.size(); i++) {
-                        if (airportBounds.get(i).contains(mouseX, mouseY)) {
-
-                            startGame(AIRPORTS[i]);
-                        }
-                    }
-                }
-
-                case MISSIONS -> {
-                    if (backBounds.contains(mouseX, mouseY)) {
-                        screen = Screen.MAIN;
-                        redraw();
-                        return;
-                    }
-
-                    for (int i = 0; i < missionBounds.size(); i++) {
-                        if (missionBounds.get(i).contains(mouseX, mouseY)) {
-                            System.out.println("Mission: " + MISSIONS[i]);
-
-                            // Hier später die ausgewählte Mission starten.
-                            return;
-                        }
-                    }
-                }
-
-                case SETTINGS -> {
-                    if (mouseY >= 180 && mouseY <= 250) {
-                        screen = Screen.GRAPHICS_SETTINGS;
-                        scrollOffset = 0;
-                        redraw();
-
-                    } else if (mouseY >= 270 && mouseY <= 340) {
-                        screen = Screen.STEERING_SETTINGS;
-                        redraw();
-
-                    } else if (mouseY >= 360 && mouseY <= 430) {
-                        screen = Screen.GAMEPLAY_SETTINGS;
-                        redraw();
-                    }
-                    else if (mouseY >= 450 && mouseY <= 520) {
-                        screen = Screen.AUDIO_SETTINGS;
-                        redraw();
-                    }
-                    else if (mouseY >= 540 && mouseY <= 610) {
-                        screen = Screen.INTERFACE_SETTING;
-                        redraw();
-                    }
-                }
-
-
-                case GRAPHICS_SETTINGS -> {
-                    if (backBounds.contains(mouseX, mouseY)) {
-                        screen = Screen.SETTINGS;
-                        redraw();
-                        return;
-                    }
-                    if (!graphicsViewport.contains(mouseX, mouseY)) return;
-                    for (int i = 0; i < graphicsBounds.size(); i++) {
-                        if (graphicsBounds.get(i).contains(mouseX, mouseY)) {
-                            System.out.println("Grafikeinstellung: " + GRAPHICS_SETTING[i]);
-                            if(i==7){alxb.flighttraining.game.world.WorldDetailSettings.cycleRenderDistance();redraw();}
-                            return;
-                        }
-                    }
-                }
-
-                case AUDIO_SETTINGS -> {
-                    if(backBounds.contains(mouseX,mouseY))screen=Screen.SETTINGS;
-                    else if(app.getGameAudio()!=null){
-                        var audio=app.getGameAudio();
-                        if(audioMinus.contains(mouseX,mouseY))audio.setVolume(audio.getVolume()-.1f);
-                        if(audioPlus.contains(mouseX,mouseY))audio.setVolume(audio.getVolume()+.1f);
-                        if(audioMute.contains(mouseX,mouseY))audio.toggleMute();
-                    }
-                    redraw();
-                }
-                case STEERING_SETTINGS -> {
-
-                }
-
-                case DOGFIGHT_AI -> {
-                    String clicked = dogfightUI.hit(mouseX, mouseY);
-                    switch (clicked) {
-                        case "back" -> screen = Screen.MAIN;
-                        case "countMinus" -> dogfightUI.count = Math.max(1, dogfightUI.count - 1);
-                        case "countPlus", "count" -> dogfightUI.count = Math.min(8, dogfightUI.count + 1);
-                        case "difficulty" -> dogfightUI.difficultyIndex = (dogfightUI.difficultyIndex + 1) % 3;
-                        case "region" -> dogfightUI.regionIndex = (dogfightUI.regionIndex + 1) % DogfightSettings.Region.values().length;
-                        case "altitude" -> dogfightUI.altitudeIndex = (dogfightUI.altitudeIndex + 1) % DogfightUI.HEIGHTS.length;
-                        case "distance" -> dogfightUI.distanceIndex = (dogfightUI.distanceIndex + 1) % DogfightUI.DISTANCES.length;
-                        case "weapons" -> dogfightUI.weapons = !dogfightUI.weapons;
-                        case "start" -> { app.startDogfight(dogfightUI.settings()); return; }
-                        default -> { return; }
-                    }
-                    redraw();
-                }
-
-            }
-
-        };
-
-
-        app.getInputManager().addListener(
-                clickListener,
-                "MenuClick"
-        );
-
-        AnalogListener scrollListener = (name, value, tpf) -> {
-            if (!menuOffen || screen != Screen.GRAPHICS_SETTINGS) return;
-            Vector2f cursor = input.getCursorPosition();
-            float mouseY = app.getCamera().getHeight() - cursor.y;
-            if (!graphicsViewport.contains(cursor.x, mouseY)) return;
-            float direction = name.equals("ScrollDown") ? 1f : -1f;
-            float previous = scrollOffset;
-            scrollOffset = Math.max(0, Math.min(maxGraphicsScroll(menuHeight),
-                    scrollOffset + direction * value * 40f));
-            if (scrollOffset != previous) graphicsRedrawPending = true;
-        };
-        input.addListener(scrollListener, "ScrollUp", "ScrollDown");
-
-        // Mehrere Rad-/Trackpad-Ereignisse pro Frame zusammenfassen.
-        picture.addControl(new AbstractControl() {
-            private float elapsed;
-            @Override protected void controlUpdate(float tpf) {
-                elapsed += tpf;
-                if (graphicsRedrawPending && elapsed >= 1f / 30f) {
-                    elapsed = 0;
-                    graphicsRedrawPending = false;
-                    if (menuOffen && screen == Screen.GRAPHICS_SETTINGS)
-                        redraw();
-                }
-            }
-            @Override protected void controlRender(RenderManager rm, ViewPort vp) {}
-        });
-    }
-
-    private void redraw() {
-        drawMenu(app.getCamera().getWidth(), app.getCamera().getHeight(), menuAssets);
-    }
-
-    public void update(float tpf) {
-        if(menuOffen&&screen==Screen.AUDIO_SETTINGS&&app.getGameAudio()!=null&&displayedAudioVolume!=app.getGameAudio().getVolume())redraw();
-        if (menuOffen && (menuWidth != app.getCamera().getWidth() || menuHeight != app.getCamera().getHeight())) redraw();
-    }
-
-    private void drawMenu(int width, int height, AssetManager assets) {
-        menuWidth = width; menuHeight = height;
-        picture.setWidth(width); picture.setHeight(height);
-        BufferedImage image = new BufferedImage(
-                width, height, BufferedImage.TYPE_INT_ARGB
-        );
-
-        Graphics2D g = image.createGraphics();
-
-        try {
-            g.setColor(new Color(20, 30, 45));
-            g.fillRect(0, 0, width, height);
-
-            g.setColor(Color.WHITE);
-            g.setFont(new Font("SansSerif", Font.BOLD, 48));
-
-            switch (screen) {
-                case MAIN -> {
-                    g.drawString(English.text("Flight Training"), 80, 120);
-
-                    drawButton(g, "Missionen", 180, 80, hellBlau);
-                    drawButton(g, "Free Play", 270, 80, hellBlau);
-                    drawButton(g, "Einstellungen", 360, 80, hellBlau);
-                    drawButton(g, "Multiplayer", 450, 80, hellBlau);
-                    drawButton(g, "Dogfight AI", 540, 80, hellBlau);
-                    drawButton(g, "Beenden", 630, 80, Color.red);
-                }
-                case FREE_PLAY -> drawFreePlay(g, width, height);
-                case MISSIONS -> drawMissions(g, width, height);
-                case SETTINGS -> drawSettings(g);
-                case GRAPHICS_SETTINGS -> drawGraphicSetting(g, width, height);
-                case AUDIO_SETTINGS -> drawAudioSettings(g,width);
-                case DOGFIGHT_AI -> dogfightUI.draw(g, width, height);
-
-            }
-        } finally {
-            g.dispose();
-        }
-
-        Texture2D texture = new Texture2D(
-                new AWTLoader().load(image, true)
-        );
-
-        com.jme3.texture.Texture old = picture.getMaterial() == null ? null
-                : picture.getMaterial().getTextureParam("Texture") == null ? null
-                : picture.getMaterial().getTextureParam("Texture").getTextureValue();
-        picture.setTexture(assets, texture, true);
-        if (old != null && old.getImage() != null) old.getImage().dispose();
-    }
-
-    private void drawFreePlay(Graphics2D g, int width, int height) {
-        int margin = 40;
-        int gap = 16;
-        int columns = 3;
-        int rows = (AIRPORTS.length + columns - 1) / columns;
-
-        // Kopfbereich
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 36));
-        g.drawString(English.text("Free Play"), margin, 65);
-
-        g.setColor(new Color(165, 180, 200));
-        g.setFont(new Font("SansSerif", Font.PLAIN, 17));
-        g.drawString(English.text("Wähle deinen Startflugplatz"), margin, 95);
-
-        // Zurück oben rechts
-        backBounds.setBounds(width - margin - 130, 35, 130, 44);
-
-        g.setColor(new Color(55, 70, 90));
-        g.fillRoundRect(
-                backBounds.x, backBounds.y,
-                backBounds.width, backBounds.height,
-                12, 12
-        );
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 17));
-        drawCenteredText(g, "Zurück", backBounds, 0);
-
-        // Kartenraster
-        int top = 125;
-        int cardWidth = (width - 2 * margin - (columns - 1) * gap) / columns;
-
-        int cardHeight = Math.min(
-                155,
-                (height - top - margin - (rows - 1) * gap) / rows
-        );
-
-        airportBounds.clear();
-
-        for (int i = 0; i < AIRPORTS.length; i++) {
-            int x = margin + (i % columns) * (cardWidth + gap);
-            int y = top + (i / columns) * (cardHeight + gap);
-
-            java.awt.Rectangle bounds =
-                    new java.awt.Rectangle(x, y, cardWidth, cardHeight);
-
-            airportBounds.add(bounds);
-            drawAirportCard(g, AIRPORTS[i], bounds);
+    private void activate(String id){
+        if(app.getAccounts().view().busy()&&!id.equals("confirm-quit"))return;
+        if(id.equals("home")){go(Screen.MAIN);return;}
+        if(id.equals("back")){go(settingsScreen()?Screen.SETTINGS:Screen.MAIN);return;}
+        if(id.startsWith("settings:")){category(id.substring(9));return;}
+        if(id.startsWith("airport:")){selectedAirport=Integer.parseInt(id.substring(8));dirty=true;return;}
+        if(id.startsWith("mission:")){selectedMission=Integer.parseInt(id.substring(8));dirty=true;return;}
+        switch(id){
+            case "pilot-profile"->go(!app.getAccounts().view().signedIn()&&!app.getAccounts().view().expired()?Screen.PILOT_PROFILE:Screen.ACCOUNT);
+            case "account"->go(Screen.ACCOUNT);
+            case "friends"->go(Screen.FRIENDS);
+            case "free"->go(Screen.FREE_PLAY);case "missions"->go(Screen.MISSIONS);case "dogfight"->go(Screen.DOGFIGHT_AI);case "settings"->go(Screen.SETTINGS);case "multiplayer"->go(Screen.MULTIPLAYER);
+            case "quit"->{quitConfirm=true;hover="cancel";dirty=true;}case "cancel"->{quitConfirm=false;dirty=true;}case "confirm-quit"->app.stop();
+            case "start-free"->{var region=regionFor(CODES[selectedAirport]);app.startFreePlay(new SpawnSettings(region.x,region.z,selectedAirport==4?398f:0f,0));}
+            case "start-mission"->{if(selectedMission==3)go(Screen.DOGFIGHT_AI);else if(selectedMission<2)go(Screen.FREE_PLAY);}
+            case "countMinus"->{dogfightUI.count=Math.max(1,dogfightUI.count-1);dirty=true;}
+            case "countPlus"->{dogfightUI.count=Math.min(8,dogfightUI.count+1);dirty=true;}
+            case "difficulty"->{dogfightUI.difficultyIndex=(dogfightUI.difficultyIndex+1)%3;dirty=true;}
+            case "region"->{dogfightUI.regionIndex=(dogfightUI.regionIndex+1)%DogfightSettings.Region.values().length;dirty=true;}
+            case "altitude"->{dogfightUI.altitudeIndex=(dogfightUI.altitudeIndex+1)%DogfightUI.HEIGHTS.length;dirty=true;}
+            case "distance"->{dogfightUI.distanceIndex=(dogfightUI.distanceIndex+1)%DogfightUI.DISTANCES.length;dirty=true;}
+            case "weapons"->{dogfightUI.weapons=!dogfightUI.weapons;dirty=true;}
+            case "start-dogfight"->app.startDogfight(dogfightUI.settings());
         }
     }
-
-    private void startGame(String flughafen){
-
-        switch (flughafen){
-            case "Zürich" -> app.startFreePlay(new SpawnSettings(62160f, -164460f, 0f, 0f));
-            case "Genf" -> app.startFreePlay(new SpawnSettings(-124060f, -29110f, 0f, 0f));
-            case "Basel-Mulhouse" -> app.startFreePlay(new SpawnSettings(-15300f, -179730f, 0f, 0f));
-            case "Bern-Belp" -> app.startFreePlay(new SpawnSettings(-16970f, -103340, 0f, 0f));
-            case "St. Gallen-Altenrhein" -> app.startFreePlay(new SpawnSettings(138510f, -169020f, 398f, 0f));
-            case "Lugano-Agno" -> app.startFreePlay(new SpawnSettings(92500f, -3240f, 0f, 0f));
-            case "Sion" -> app.startFreePlay(new SpawnSettings(-30120f, -26140f, 0f, 0f));
-            case "Grenchen" -> app.startFreePlay(new SpawnSettings(-23190f, -133100f, 0f, 0f));
-            case "Payerne" -> app.startFreePlay(new SpawnSettings(-61550f, -95560f, 0f, 0f));
-            case "Meiringen" -> app.startFreePlay(new SpawnSettings(29740f, -84500f, 0f, 0f));
-            case "Emmen" -> app.startFreePlay(new SpawnSettings(44320f, -123520f, 0f, 0f));
-
-            default -> throw new IllegalArgumentException(
-                    "Unbekannter Flugplatz: " + flughafen
-            );
+    private static DogfightSettings.Region regionFor(String code){return switch(code){case "LSZH"->DogfightSettings.Region.ZURICH;case "LSGG"->DogfightSettings.Region.GENEVA;case "LFSB"->DogfightSettings.Region.BASEL;case "LSZB"->DogfightSettings.Region.BERN;case "LSZR"->DogfightSettings.Region.ALTENRHEIN;case "LSZA"->DogfightSettings.Region.LUGANO;case "LSGS"->DogfightSettings.Region.SION;case "LSZG"->DogfightSettings.Region.GRENCHEN;case "LSMP"->DogfightSettings.Region.PAYERNE;case "LSMM"->DogfightSettings.Region.MEIRINGEN;default->DogfightSettings.Region.EMMEN;};}
+    public void update(float tpf){
+        if(!menuOffen)return;paintClock+=Math.max(0,tpf);
+        boolean resize=menuWidth!=app.getCamera().getWidth()||menuHeight!=app.getCamera().getHeight();
+        var cursor=input.getCursorPosition();String pointed=hit((cursor.x-offsetX)/scale,(app.getCamera().getHeight()-cursor.y-offsetY)/scale);
+        if(cursor.x!=pointerX||cursor.y!=pointerY){pointerX=cursor.x;pointerY=cursor.y;if(!pointed.equals(hover)){hover=pointed;dirty=true;}
+            if(settingsScreen())settingsPanel.pointer((cursor.x-offsetX)/scale-310,(app.getCamera().getHeight()-cursor.y-offsetY)/scale-158);
         }
+        long revision=GameSettings.get().revision();if(revision!=profileRevision){profileRevision=revision;dirty=true;}
+        long pilotChange=app.getPilotProfiles().view().revision();if(pilotChange!=pilotRevision){pilotRevision=pilotChange;dirty=true;}
+        long accountChange=app.getAccounts().view().revision();if(accountChange!=accountRevision){accountRevision=accountChange;dirty=true;}
+        if(screen==Screen.ACCOUNT)dirty|=accountPanel.update();
+        dirty|=friendsPanel.update();
+        dirty|=multiplayerPanel.update();app.getFriends().shareCode(multiplayerPanel.invitationCode());
+        var invitation=app.getFriends().takeJoin();if(invitation!=null){go(Screen.MULTIPLAYER);multiplayerPanel.joinInvitation(invitation.code(),invitation.password());dirty=true;}
+        if(screen==Screen.PILOT_PROFILE)dirty|=pilotPanel.update();
+        dirty|=settingsPanel.takeDirty();
+        if(resize||dirty&&paintClock>=1f/25f)redraw();
     }
-
-    private void drawMissions(Graphics2D g, int width, int height) {
-        drawPageHeader(
-                g, "Missionen",
-                "Wähle deinen nächsten Einsatz", width
-        );
-
-        int margin = 40;
-        int gap = 18;
-        int columns = 3;
-        int cardWidth = (width - 2 * margin - 2 * gap) / columns;
-        int cardHeight = Math.min(250, (height - 125 - margin - gap) / 2);
-
-        missionBounds.clear();
-
-        for (int i = 0; i < MISSIONS.length; i++) {
-            int x = margin + (i % columns) * (cardWidth + gap);
-            int y = 125 + (i / columns) * (cardHeight + gap);
-
-            java.awt.Rectangle bounds = new java.awt.Rectangle(
-                    x, y, cardWidth, cardHeight
-            );
-            missionBounds.add(bounds);
-
-            // Kartenhintergrund
-            g.setColor(new Color(35, 49, 68));
-            g.fillRoundRect(x, y, cardWidth, cardHeight, 18, 18);
-
-            // Platz für ein späteres Missionsbild
-            int imageHeight = cardHeight - 100;
-
-            g.setColor(new Color(48, 68, 91));
-            g.fillRoundRect(
-                    x + 10, y + 10,
-                    cardWidth - 20, imageHeight,
-                    12, 12
-            );
-
-            g.setColor(new Color(160, 180, 200));
-            g.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            drawCenteredText(
-                    g, "Missionsvorschau",
-                    new java.awt.Rectangle(
-                            x + 10, y + 10,
-                            cardWidth - 20, imageHeight
-                    ),
-                    0
-            );
-
-            g.setColor(Color.WHITE);
-            g.setFont(new Font("SansSerif", Font.BOLD, 22));
-            g.drawString(English.text(MISSIONS[i]), x + 18, y + cardHeight - 58);
-
-            g.setColor(new Color(180, 195, 212));
-            g.setFont(new Font("SansSerif", Font.PLAIN, 15));
-            g.drawString(English.text(
-                    MISSION_DESCRIPTIONS[i]),
-                    x + 18, y + cardHeight - 30
-            );
+    private void redraw(){drawMenu(app.getCamera().getWidth(),app.getCamera().getHeight(),menuAssets);dirty=false;paintClock=0;}
+    private void drawMenu(int width,int height,AssetManager assets){
+        menuWidth=Math.max(1,width);menuHeight=Math.max(1,height);scale=Math.min(menuWidth/1600f,menuHeight/900f);offsetX=Math.max(0,(menuWidth-1600*scale)/2);offsetY=Math.max(0,(menuHeight-900*scale)/2);
+        BufferedImage image=new BufferedImage(menuWidth,menuHeight,BufferedImage.TYPE_INT_RGB);Graphics2D g=image.createGraphics();
+        try{MenuTheme.quality(g);MenuTheme.background(g,MenuTheme.photo(assets),menuWidth,menuHeight,screen==Screen.MAIN);
+            g.setColor(new Color(8,14,20,235));if(screen==Screen.MAIN)g.fillRect(Math.round(offsetX+1100*scale),0,menuWidth-Math.round(offsetX+1100*scale),menuHeight);
+            else{g.setColor(new Color(8,15,21,235));g.fillRect(0,0,menuWidth,Math.round(offsetY+82*scale));}
+            g.translate(offsetX,offsetY);g.scale(scale,scale);hits.clear();
+            if(screen==Screen.MAIN)main(g);else{shell(g);switch(screen){case FREE_PLAY->free(g);case MISSIONS->missions(g);case DOGFIGHT_AI->dogfight(g);case SETTINGS->settingsOverview(g);case GRAPHICS_SETTINGS,STEERING_SETTINGS,GAMEPLAY_SETTINGS,AUDIO_SETTINGS,INTERFACE_SETTING->settings(g);case MULTIPLAYER->multiplayer(g);case PILOT_PROFILE->pilotPanel.draw(g);case ACCOUNT->accountPanel.draw(g);case FRIENDS->friendsPanel.draw(g);default->{}}}
+            if(quitConfirm)quit(g);
+        }finally{g.dispose();}
+        Texture2D texture=new Texture2D(new AWTLoader().load(image,true));var old=picture.getMaterial()==null?null:picture.getMaterial().getTextureParam("Texture");com.jme3.texture.Texture previous=old==null?null:old.getTextureValue();picture.setTexture(assets,texture,false);picture.setWidth(menuWidth);picture.setHeight(menuHeight);if(previous!=null&&previous.getImage()!=null)previous.getImage().dispose();
+    }
+    private void text(Graphics2D g,String value,int x,int y,int size,Color color,boolean bold){MenuTheme.text(g,value,x,y,size,color,bold);}
+    private void button(Graphics2D g,String id,String label,int x,int y,int w,int h,boolean primary){Rectangle r=new Rectangle(x,y,w,h);hits.put(id,r);MenuTheme.button(g,r,label,primary,id.equals(hover),true);}
+    private void header(Graphics2D g,String title,String subtitle){text(g,title,54,146,36,MenuTheme.TEXT,true);text(g,subtitle,56,179,17,MenuTheme.MUTED,false);}
+    private void shell(Graphics2D g){
+        g.setColor(new Color(8,15,21,235));g.fillRect(0,0,1600,82);text(g,"DSC",52,50,30,MenuTheme.TEXT,true);text(g,"FLIGHT TRAINING",125,49,16,MenuTheme.MUTED,false);
+        String[][] navigation={{"free","FREE FLIGHT"},{"dogfight","DOGFIGHT"},{"missions","MISSIONS"},{"settings","SETTINGS"}};
+        for(int i=0;i<navigation.length;i++){String id=navigation[i][0];boolean selected=id.equals("free")&&screen==Screen.FREE_PLAY||id.equals("dogfight")&&screen==Screen.DOGFIGHT_AI||id.equals("missions")&&screen==Screen.MISSIONS||id.equals("settings")&&(screen==Screen.SETTINGS||settingsScreen());Rectangle r=new Rectangle(540+i*185,16,170,50);hits.put(id,r);if(selected||hover.equals(id)){g.setColor(new Color(255,255,255,9));g.fillRect(r.x,r.y,r.width,r.height);}text(g,navigation[i][1],r.x+16,47,15,selected?MenuTheme.ACCENT:MenuTheme.TEXT,selected);if(selected){g.setColor(MenuTheme.ACCENT);g.fillRect(r.x+16,72,r.width-32,2);}}
+        button(g,"friends",app.getFriends().view().notifications()>0?"FRIENDS •":"FRIENDS",1274,22,108,38,false);
+        button(g,"home","MAIN MENU",1392,22,154,38,false);MenuTheme.line(g,54,837,1492);text(g,"F/A-18C HORNET",54,869,13,MenuTheme.MUTED,true);MenuTheme.right(g,"SWITZERLAND  /  FLIGHT TRAINING",1546,869,13,MenuTheme.MUTED);
+    }
+    private void main(Graphics2D g){
+        var account=app.getAccounts().view();
+        if(account.signedIn()){
+            button(g,"account","ACCOUNT: "+account.name(),250,48,620,45,false);
+        }else{
+            String pilotName=app.getIdentityProvider().currentIdentity().displayName();if(pilotName.length()>18)pilotName=pilotName.substring(0,17)+"…";
+            button(g,"pilot-profile","PILOT: "+pilotName,250,48,300,45,false);
+            button(g,"account","SIGN IN / REGISTER",570,48,300,45,false);
         }
+        int requests=app.getFriends().view().notifications();button(g,"friends",requests>0?"FRIENDS ("+requests+")":"FRIENDS",890,48,190,45,false);
+        text(g,"DSC",54,76,46,MenuTheme.TEXT,true);text(g,"FLIGHT TRAINING",56,105,14,MenuTheme.ACCENT,true);
+        text(g,"F/A-18C",58,705,66,MenuTheme.TEXT,true);text(g,"HORNET",60,758,42,MenuTheme.TEXT,false);text(g,"Switzerland  /  F/A-18C Hornet",62,797,19,MenuTheme.MUTED,false);
+        text(g,"OPERATIONS",1150,140,13,MenuTheme.ACCENT,true);MenuTheme.line(g,1150,159,394);
+        String[][] items={{"free","FREE FLIGHT","Choose an airfield and take off"},{"dogfight","DOGFIGHT","Set up an air combat session"},{"missions","MISSIONS","Training and mission selection"},{"settings","SETTINGS","Aircraft, controls and display"},{"multiplayer","MULTIPLAYER","Host a lobby or join a formation"},{"quit","EXIT","Close Flight Training"}};
+        for(int i=0;i<items.length;i++){int y=190+i*88;String id=items[i][0];Rectangle r=new Rectangle(1134,y,426,77);hits.put(id,r);boolean selected=id.equals(hover);if(selected){g.setColor(new Color(221,171,85,22));g.fillRect(r.x,r.y,r.width,r.height);g.setColor(MenuTheme.ACCENT);g.fillRect(r.x,r.y,3,r.height);}text(g,items[i][1],1154,y+31,23,selected?MenuTheme.ACCENT:MenuTheme.TEXT,true);text(g,items[i][2],1155,y+57,14,MenuTheme.MUTED,false);if(selected)text(g,"›",1523,y+42,29,MenuTheme.ACCENT,false);}
+        MenuTheme.line(g,1150,763,394);text(g,"F/A-18C HORNET",1152,798,15,MenuTheme.TEXT,true);text(g,"11 Swiss airfields  ·  Solo / network flight",1152,824,14,MenuTheme.MUTED,false);text(g,"TAB: SELECT    ENTER: OPEN    ESC: EXIT",56,866,12,MenuTheme.MUTED,true);
     }
-
-    private void drawSettings(Graphics2D g) {
-        g.drawString(English.text("Flight Training"), 80, 120);
-
-        drawButton(g, "Graphics", 180, 80, hellBlau);
-        drawButton(g, "Steering", 270, 80, hellBlau);
-        drawButton(g, "Gameplay", 360, 80, hellBlau);
-        drawButton(g, "Audio", 450, 80, hellBlau);
-        drawButton(g, "Interface", 540, 80, hellBlau);
-
-
+    private void free(Graphics2D g){
+        header(g,"Free flight","Choose your departure airfield. Terrain is prepared before the flight begins.");
+        MenuTheme.panel(g,54,214,462,588);text(g,"DEPARTURE AIRFIELD",74,245,12,MenuTheme.MUTED,true);
+        for(int i=0;i<AIRPORTS.length;i++){int y=261+i*47;Rectangle row=new Rectangle(64,y,442,45);String id="airport:"+i;hits.put(id,row);if(i==selectedAirport||id.equals(hover)){g.setColor(i==selectedAirport?new Color(221,171,85,25):new Color(255,255,255,8));g.fillRect(row.x,row.y,row.width,row.height);}if(i==selectedAirport){g.setColor(MenuTheme.ACCENT);g.fillRect(row.x,row.y,3,row.height);}text(g,CODES[i],80,y+28,14,i==selectedAirport?MenuTheme.ACCENT:MenuTheme.MUTED,true);text(g,AIRPORTS[i],150,y+28,19,MenuTheme.TEXT,false);}
+        String code=CODES[selectedAirport];MenuTheme.cover(g,airportImages.get(code),542,214,1004,416);g.setPaint(new GradientPaint(0,425,new Color(5,11,17,0),0,630,new Color(5,11,17,245)));g.fillRect(542,214,1004,416);
+        text(g,code,572,550,16,MenuTheme.ACCENT,true);text(g,AIRPORTS[selectedAirport],570,597,38,MenuTheme.TEXT,true);
+        MenuTheme.right(g,MenuImages.credit(menuAssets,code),1532,623,11,MenuTheme.MUTED);
+        MenuTheme.panel(g,542,650,1004,152);var region=regionFor(code);text(g,"AIRCRAFT",566,680,12,MenuTheme.MUTED,true);text(g,"F/A-18C Hornet",566,716,24,MenuTheme.TEXT,true);text(g,"START",900,680,12,MenuTheme.MUTED,true);text(g,selectedAirport==4?"398 m above ground":"On ground",900,713,21,MenuTheme.TEXT,false);
+        text(g,"AIRFIELD POSITION",566,754,12,MenuTheme.MUTED,true);text(g,String.format(Locale.ROOT,"LV95  %.0f E / %.0f N",2621500+region.x,1092500-region.z),566,778,15,MenuTheme.MUTED,false);button(g,"start-free","START FLIGHT  →",1190,728,328,50,true);
     }
-
-    private void drawGraphicSetting(Graphics2D g, int width, int height) {
-        drawPageHeader(g, "Grafik", "Mit Mausrad oder Trackpad scrollen", width);
-        int margin = 40;
-        graphicsViewport.setBounds(margin, GRAPHICS_TOP,
-                Math.max(1, width - margin * 2),
-                Math.max(1, height - GRAPHICS_TOP - GRAPHICS_BOTTOM));
-        scrollOffset = Math.max(0, Math.min(maxGraphicsScroll(height), scrollOffset));
-        graphicsBounds.clear();
-
-        Graphics2D content = (Graphics2D) g.create();
-        try {
-            content.clip(graphicsViewport);
-            content.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-            int cardWidth = Math.max(1, graphicsViewport.width - 24);
-            for (int i = 0; i < GRAPHICS_SETTING.length; i++) {
-                int y = GRAPHICS_TOP + i * (GRAPHICS_ROW_HEIGHT + GRAPHICS_ROW_GAP)
-                        - Math.round(scrollOffset);
-                Rectangle row = new Rectangle(margin, y, cardWidth, GRAPHICS_ROW_HEIGHT);
-                // Index bleibt gleich; unsichtbare Bereiche sind nicht anklickbar.
-                Rectangle hit = row.intersection(graphicsViewport);
-                graphicsBounds.add(hit.isEmpty() ? new Rectangle() : hit);
-
-                if (!row.intersects(graphicsViewport)) continue;
-                content.setColor(hellBlau);
-                content.fillRoundRect(row.x, row.y, row.width, row.height, 16, 16);
-                content.setColor(Color.WHITE);
-                content.setFont(new Font("SansSerif", Font.PLAIN, 24));
-                content.drawString(English.text(GRAPHICS_SETTING[i]+(i==7?String.format(java.util.Locale.ROOT,"   %.0f km  ›",alxb.flighttraining.game.world.WorldDetailSettings.renderDistance()/1000f):"")), row.x + 18, row.y + 39);
-            }
-        } finally {
-            content.dispose();
-        }
-
-        // Scrollbalken außerhalb der Karten; Kopfbereich bleibt stehen.
-        int maximum = maxGraphicsScroll(height);
-        if (maximum > 0) {
-            int x = graphicsViewport.x + graphicsViewport.width - 8;
-            int trackHeight = graphicsViewport.height;
-            int thumbHeight = Math.min(trackHeight, Math.max(28,
-                    Math.round((float) trackHeight * trackHeight / graphicsContentHeight())));
-            int thumbY = graphicsViewport.y + Math.round(
-                    scrollOffset / maximum * (trackHeight - thumbHeight));
-            g.setColor(new Color(35, 49, 68));
-            g.fillRoundRect(x, graphicsViewport.y, 8, trackHeight, 8, 8);
-            g.setColor(new Color(130, 185, 220));
-            g.fillRoundRect(x, thumbY, 8, thumbHeight, 8, 8);
-        }
+    private void missions(Graphics2D g){
+        header(g,"Missions","Choose an activity. More mission scenarios will be added as they become available.");
+        MenuTheme.panel(g,54,214,462,588);
+        for(int i=0;i<MISSION_NAMES.length;i++){int y=238+i*83;Rectangle r=new Rectangle(66,y,438,72);hits.put("mission:"+i,r);if(i==selectedMission||hover.equals("mission:"+i)){g.setColor(new Color(221,171,85,i==selectedMission?25:12));g.fillRect(r.x,r.y,r.width,r.height);}text(g,String.format("%02d",i+1),83,y+35,13,MenuTheme.MUTED,false);text(g,MISSION_NAMES[i],127,y+35,22,MenuTheme.TEXT,true);text(g,i==3?"AI COMBAT":i<2?"FREE FLIGHT TRAINING":"PLANNED",128,y+57,11,i<=1||i==3?MenuTheme.ACCENT:MenuTheme.MUTED,true);}
+        MenuTheme.cover(g,MenuTheme.briefing(menuAssets),542,214,1004,345);MenuTheme.panel(g,542,578,1004,224);text(g,MISSION_NAMES[selectedMission],570,622,31,MenuTheme.TEXT,true);MenuTheme.paragraph(g,MISSION_DETAILS[selectedMission],572,657,900,18,MenuTheme.MUTED);
+        boolean available=selectedMission<2||selectedMission==3;
+        if(available){text(g,selectedMission==3?"Configure your opponent and starting conditions.":"Choose an airfield next. No scored objectives in this training mode.",572,724,16,MenuTheme.MUTED,false);button(g,"start-mission",selectedMission==3?"CONFIGURE DOGFIGHT  →":"SELECT AIRFIELD  →",1180,736,338,46,true);}
+        else text(g,"This scenario is not available in the current build.",572,742,17,MenuTheme.MUTED,false);
     }
-
-
-
-
-    private void drawAudioSettings(Graphics2D g,int width){
-        drawPageHeader(g,"Audio","Flight effects, cockpit warnings and airport proximity radio",width);
-        float volume=app.getGameAudio()==null?.65f:app.getGameAudio().getVolume();
-        displayedAudioVolume=volume;
-        g.setFont(new Font("SansSerif",Font.BOLD,28));g.setColor(Color.WHITE);g.drawString("Master volume: "+Math.round(volume*100)+" %",60,185);
-        audioMinus.setBounds(60,215,100,60);audioPlus.setBounds(180,215,100,60);audioMute.setBounds(300,215,190,60);
-        for(java.awt.Rectangle r:new java.awt.Rectangle[]{audioMinus,audioPlus,audioMute}){g.setColor(new Color(50,100,160));g.fillRoundRect(r.x,r.y,r.width,r.height,12,12);}
-        g.setColor(Color.WHITE);drawCenteredText(g,"−",audioMinus,0);drawCenteredText(g,"+",audioPlus,0);drawCenteredText(g,volume>0?"Mute":"Unmute",audioMute,0);
-        g.setFont(new Font("SansSerif",Font.PLAIN,19));g.drawString("F8: mute   F9: quieter   F10: louder",60,325);
-        g.drawString("Safety warnings take priority over radio messages.",60,370);
-        g.drawString("Airport radio announces proximity only, not airspace clearance.",60,405);
+    private void dogfight(Graphics2D g){
+        header(g,"Dogfight","Configure an air combat training flight.");
+        MenuTheme.fit(g,MenuTheme.detail(menuAssets),54,214,462,314);MenuTheme.panel(g,54,546,462,256);text(g,"YOUR AIRCRAFT",78,579,12,MenuTheme.ACCENT,true);text(g,"F/A-18C Hornet",76,626,30,MenuTheme.TEXT,true);text(g,"Swiss Air Force",78,656,18,MenuTheme.MUTED,false);MenuTheme.line(g,78,678,414);text(g,"HEAD-ON ENGAGEMENT",78,710,12,MenuTheme.MUTED,true);text(g,dogfightUI.count+" opponent"+(dogfightUI.count>1?"s":"")+"  /  "+English.text(DogfightSettings.Difficulty.values()[dogfightUI.difficultyIndex].label),78,746,21,MenuTheme.TEXT,false);
+        MenuTheme.panel(g,542,214,1004,588);text(g,"ENGAGEMENT SETUP",568,250,12,MenuTheme.ACCENT,true);
+        field(g,"OPPONENTS",Integer.toString(dogfightUI.count),568,284,460);button(g,"countMinus","−",820,307,64,46,false);button(g,"countPlus","+",892,307,64,46,false);
+        select(g,"difficulty","DIFFICULTY",English.text(DogfightSettings.Difficulty.values()[dogfightUI.difficultyIndex].label),1050,284,466);
+        select(g,"region","START REGION",English.text(DogfightSettings.Region.values()[dogfightUI.regionIndex].label),568,391,460);
+        select(g,"altitude","HEIGHT ABOVE GROUND",String.format(Locale.ROOT,"%.0f m",DogfightUI.HEIGHTS[dogfightUI.altitudeIndex]),1050,391,466);
+        select(g,"distance","INITIAL SEPARATION",String.format(Locale.ROOT,"%.0f km",DogfightUI.DISTANCES[dogfightUI.distanceIndex]/1000),568,498,460);
+        select(g,"weapons","WEAPONS",dogfightUI.weapons?"Cannon & IR missiles":"Unarmed",1050,498,466);
+        MenuTheme.line(g,568,621,948);text(g,"Terrain and aircraft are prepared before the session starts.",570,659,17,MenuTheme.MUTED,false);text(g,"Use a short starting range for immediate contact.",570,687,15,MenuTheme.MUTED,false);button(g,"start-dogfight","START DOGFIGHT  →",1180,728,336,50,true);
     }
-
-    private void drawSettingsBox(Graphics2D g, String text, int y, int x, Color color){
-        g.setColor(color);
-        g.fillRoundRect(x, y, 300, 70, 16, 16);
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.PLAIN, 28));
-        g.drawString(English.text(text), x+15, y + 45);
+    private void field(Graphics2D g,String label,String value,int x,int y,int width){text(g,label,x,y,12,MenuTheme.MUTED,true);g.setColor(new Color(8,16,23,150));g.fillRect(x,y+17,width,59);MenuTheme.line(g,x,y+76,width);text(g,value,x+17,y+56,22,MenuTheme.TEXT,true);}
+    private void select(Graphics2D g,String id,String label,String value,int x,int y,int width){field(g,label,value,x,y,width);Rectangle r=new Rectangle(x,y+17,width,59);hits.put(id,r);if(hover.equals(id)){g.setColor(MenuTheme.ACCENT);g.drawRect(r.x,r.y,r.width,r.height);}text(g,"›",x+width-31,y+56,27,MenuTheme.ACCENT,false);}
+    private void settingsOverview(Graphics2D g){
+        header(g,"Settings","Configure your display, aircraft controls and instruments.");
+        String[] details={"Display mode, resolution and rendering.","Keyboard bindings and controller response.","Flight model and assistance.","Engine, weapons, cockpit warnings and radio.","Instruments, units and target markers."};
+        for(int i=0;i<CATEGORIES.length;i++){int y=220+i*108;Rectangle r=new Rectangle(54,y,890,92);String id="settings:"+CATEGORIES[i];hits.put(id,r);MenuTheme.panel(g,r.x,r.y,r.width,r.height);if(id.equals(hover)){g.setColor(MenuTheme.ACCENT);g.fillRect(r.x,r.y,3,r.height);}text(g,CATEGORIES[i],80,y+37,24,MenuTheme.TEXT,true);text(g,details[i],82,y+67,17,MenuTheme.MUTED,false);text(g,"›",895,y+55,28,MenuTheme.ACCENT,false);}
+        MenuTheme.panel(g,972,220,574,523);text(g,"YOUR CONFIGURATION",1000,262,12,MenuTheme.ACCENT,true);text(g,"F/A-18C Hornet",998,312,29,MenuTheme.TEXT,true);MenuTheme.line(g,1000,342,516);text(g,"DISPLAY",1000,383,12,MenuTheme.MUTED,true);text(g,GameSettings.get().value(GameSettings.Option.RESOLUTION),1000,418,24,MenuTheme.TEXT,false);text(g,"FLIGHT MODEL",1000,472,12,MenuTheme.MUTED,true);text(g,GameSettings.get().value(GameSettings.Option.MODEL),1000,507,24,MenuTheme.TEXT,false);MenuTheme.paragraph(g,"Changes are saved automatically. Each category can be restored to its defaults.",1000,592,485,18,MenuTheme.MUTED);
     }
-
-    private int graphicsContentHeight() {
-        return GRAPHICS_SETTING.length * GRAPHICS_ROW_HEIGHT
-                + Math.max(0, GRAPHICS_SETTING.length - 1) * GRAPHICS_ROW_GAP;
+    private void settings(Graphics2D g){
+        text(g,"SETTINGS",54,139,12,MenuTheme.ACCENT,true);
+        for(int i=0;i<CATEGORIES.length;i++){int y=172+i*62;String id="settings:"+CATEGORIES[i];Rectangle r=new Rectangle(54,y,230,53);hits.put(id,r);boolean selected=CATEGORIES[i].equals(settingsPage());if(selected||hover.equals(id)){g.setColor(new Color(221,171,85,selected?25:12));g.fillRect(r.x,r.y,r.width,r.height);}if(selected){g.setColor(MenuTheme.ACCENT);g.fillRect(r.x,r.y,3,r.height);}text(g,CATEGORIES[i],74,y+34,21,selected?MenuTheme.ACCENT:MenuTheme.TEXT,selected);}
+        Graphics2D body=(Graphics2D)g.create();body.translate(310,158);body.clipRect(0,0,1236,651);settingsPanel.draw(body,settingsPage(),1236,651);body.dispose();
     }
-
-    private int maxGraphicsScroll(int height) {
-        int viewportHeight = Math.max(1, height - GRAPHICS_TOP - GRAPHICS_BOTTOM);
-        return Math.max(0, graphicsContentHeight() - viewportHeight);
+    private void multiplayer(Graphics2D g){multiplayerPanel.draw(g);}
+    private void quit(Graphics2D g){
+        hits.clear();g.setColor(new Color(0,0,0,190));g.fillRect(0,0,1600,900);MenuTheme.panel(g,520,310,560,275);text(g,"Exit Flight Training?",552,365,29,MenuTheme.TEXT,true);text(g,"Your settings have been saved.",554,407,18,MenuTheme.MUTED,false);button(g,"cancel","CANCEL",552,494,220,50,false);button(g,"confirm-quit","EXIT",800,494,246,50,true);
     }
-
-    private void drawSettingsButton(Graphics2D g, String text, int y, int x, Color color){
-        g.setColor(color);
-        g.fillRoundRect(x, y, 1000, 60, 16, 16);
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.PLAIN, 28));
-        g.drawString(English.text(text), x+15, y + 45);
-    }
-
-    private void drawButton(Graphics2D g, String text, int y, int x, Color color) {
-        g.setColor(color);
-        g.fillRoundRect(x, y, 300, 70, 16, 16);
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.PLAIN, 28));
-        g.drawString(English.text(text), x+15, y + 45);
-    }
-
-    private void drawCoverImage(Graphics2D g, BufferedImage image, int x, int y, int width, int height) {
-        Graphics2D copy = (Graphics2D) g.create();
-
-        try {
-            copy.setRenderingHint(
-                    RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_BILINEAR
-            );
-
-            copy.clip(new java.awt.geom.RoundRectangle2D.Float(
-                    x, y, width, height, 12, 12
-            ));
-
-            double scale = Math.max(
-                    (double) width / image.getWidth(),
-                    (double) height / image.getHeight()
-            );
-
-            int drawWidth = (int) Math.ceil(image.getWidth() * scale);
-            int drawHeight = (int) Math.ceil(image.getHeight() * scale);
-
-            copy.drawImage(
-                    image,
-                    x + (width - drawWidth) / 2,
-                    y + (height - drawHeight) / 2,
-                    drawWidth,
-                    drawHeight,
-                    null
-            );
-        } finally {
-            copy.dispose();
-        }
-    }
-
-    private void drawAirportCard(Graphics2D g, String name, java.awt.Rectangle bounds) {
-        int x = bounds.x;
-        int y = bounds.y;
-        int w = bounds.width;
-        int h = bounds.height;
-
-        g.setColor(new Color(35, 49, 68));
-        g.fillRoundRect(x, y, w, h, 16, 16);
-
-        int imageHeight = h - 52;
-        BufferedImage image = airportImages.get(name);
-
-        if (image != null) {
-            drawCoverImage(
-                    g, image,
-                    x + 8, y + 8,
-                    w - 16, imageHeight
-            );
-        } else {
-            g.setColor(new Color(48, 68, 91));
-            g.fillRoundRect(
-                    x + 8, y + 8,
-                    w - 16, imageHeight,
-                    12, 12
-            );
-        }
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 18));
-        g.drawString(English.text(name), x + 16, y + h - 17);
-    }
-
-    private void drawCenteredText(Graphics2D g, String text, java.awt.Rectangle bounds, int offsetY) {
-        java.awt.FontMetrics metrics = g.getFontMetrics();
-
-        int x = bounds.x
-                + (bounds.width - metrics.stringWidth(English.text(text))) / 2;
-
-        int y = bounds.y
-                + (bounds.height - metrics.getHeight()) / 2
-                + metrics.getAscent()
-                + offsetY;
-
-        g.drawString(English.text(text), x, y);
-    }
-
-    private void drawPageHeader(Graphics2D g, String title, String subtitle, int width) {
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 36));
-        g.drawString(English.text(title), 40, 65);
-
-        g.setColor(new Color(165, 180, 200));
-        g.setFont(new Font("SansSerif", Font.PLAIN, 17));
-        g.drawString(English.text(subtitle), 40, 95);
-
-        backBounds.setBounds(width - 170, 35, 130, 44);
-
-        g.setColor(new Color(55, 70, 90));
-        g.fillRoundRect(
-                backBounds.x, backBounds.y,
-                backBounds.width, backBounds.height,
-                12, 12
-        );
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 17));
-        drawCenteredText(g, "Zurück", backBounds, 0);
-    }
-
-    public void show(Node guiNode) {
-        guiNode.attachChild(picture);
-        menuOffen = true;
-        redraw();
-    }
-
-    public void hide() {
-        picture.removeFromParent();
-        menuOffen = false;
-    }
-
-    public boolean getMenuOffen(){
-        return menuOffen;
-    }
-
+    public void showMultiplayer(Node guiNode){screen=Screen.MULTIPLAYER;quitConfirm=false;show(guiNode);}
+    public void showMain(Node guiNode){screen=Screen.MAIN;quitConfirm=false;show(guiNode);}
+    public void show(Node guiNode){guiNode.attachChild(picture);menuOffen=true;redraw();}
+    public void hide(){friendsPanel.leave();accountPanel.leave();friendsPanel.leave();settingsPanel.leave();picture.removeFromParent();menuOffen=false;}
+    public boolean getMenuOffen(){return menuOffen;}
     private static final class DogfightUI {
-        private static final Color WHITE = new Color(232, 240, 250);
-        private static final Color MUTED = new Color(144, 163, 187);
-        private static final Color ACCENT = new Color(71, 205, 188);
-        // Bildschirmkoordinaten der Felder für deine spätere Klickbehandlung.
-        private final java.util.Map<String, Rectangle> bounds = new java.util.LinkedHashMap<>();
-        private int count=1, difficultyIndex=1, regionIndex=0, altitudeIndex=3, distanceIndex=2;
-        private boolean weapons=true;
-        private static final float[] HEIGHTS = {600,1000,2000,3000,4000,6000};
-        private static final float[] DISTANCES = {1000,3000,5000,8000,10000};
-        private DogfightSettings settings() {
-            return new DogfightSettings(DogfightSettings.Region.values()[regionIndex],
-                    DogfightSettings.Difficulty.values()[difficultyIndex], count,
-                    HEIGHTS[altitudeIndex], DISTANCES[distanceIndex], weapons);
-        }
-        private String hit(float x,float y) {
-            for (java.util.Map.Entry<String,Rectangle> e: bounds.entrySet())
-                if(e.getValue().contains(x,y)) return e.getKey();
-            return "";
-        }
-        private float scale;
-        private int offsetX, offsetY;
-
-        public void draw(Graphics2D original, int width, int height) {
-            Graphics2D g = (Graphics2D) original.create();
-            try {
-                bounds.clear();
-                scale = Math.min(width / 1280f, height / 800f);
-                offsetX = Math.round((width - 1280 * scale) / 2);
-                offsetY = Math.round((height - 800 * scale) / 2);
-                g.setPaint(new GradientPaint(0, 0, new Color(12, 21, 35), width, height, new Color(24, 42, 61)));
-                g.fillRect(0, 0, width, height);
-                g.translate(offsetX, offsetY);
-                g.scale(scale, scale);
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-                text(g, "FLIGHT TRAINING   /   EINZELSPIELER", 48, 44, 12, ACCENT, true);
-                text(g, "Dogfight", 48, 100, 44, WHITE, true);
-                text(g, "Dein Flugzeug. Dein Gegner. Dein Trainingsszenario.", 50, 130, 16, MUTED, false);
-                button(g, "back", "Zurück", 1092, 56, 140, 44, false);
-
-                panel(g, 48, 164, 440, 412);
-                text(g, "DEIN FLUGZEUG", 72, 199, 12, ACCENT, true);
-                text(g, "F/A-18 Hornet", 72, 267, 32, WHITE, true);
-                text(g, "Mehrzweck-Kampfflugzeug", 74, 301, 16, MUTED, false);
-                g.setColor(new Color(47, 65, 85));
-                g.drawLine(72, 330, 462, 330);
-                text(g, "STARTREGION", 74, 371, 12, ACCENT, true);
-                text(g, DogfightSettings.Region.values()[regionIndex].label, 74, 401, 20, WHITE, true);
-                text(g, "HÖHE ÜBER GELÄNDE", 74, 451, 12, ACCENT, true);
-                text(g, String.format(java.util.Locale.ROOT, "%.0f m", HEIGHTS[altitudeIndex]), 74, 481, 22, WHITE, true);
-                text(g, "Frontalstart gegen KI-Gegner", 74, 542, 15, MUTED, false);
-
-                panel(g, 512, 164, 720, 220);
-                text(g, "01   GEGNER", 540, 199, 13, ACCENT, true);
-                label(g, "Anzahl", 540, 236);
-                button(g, "countMinus", "−", 540, 252, 42, 46, false);
-                button(g, "count", Integer.toString(count), 590, 252, 60, 46, false);
-                button(g, "countPlus", "+", 658, 252, 42, 46, false);
-                label(g, "Flugzeug", 726, 236);
-                text(g, "F/A-18 Hornet", 726, 282, 18, WHITE, true);
-                label(g, "Schwierigkeit", 978, 236);
-                button(g, "difficulty", DogfightSettings.Difficulty.values()[difficultyIndex].label + "  ›", 978, 252, 226, 46, false);
-                text(g, "Klicken: nächster Wert · 1 bis 8 Gegner · Frontalstart", 540, 345, 14, MUTED, false);
-
-                panel(g, 512, 404, 720, 274);
-                text(g, "02   STARTBEDINGUNGEN", 540, 440, 13, ACCENT, true);
-                field(g, "region", "Region", DogfightSettings.Region.values()[regionIndex].label + "  ›", 540, 474, 316);
-                field(g, "altitude", "Höhe über Boden", String.format(java.util.Locale.ROOT, "%.0f m  ›", HEIGHTS[altitudeIndex]), 880, 474, 324);
-                field(g, "distance", "Anfangsabstand", String.format(java.util.Locale.ROOT, "%.0f km  ›", DISTANCES[distanceIndex]/1000f), 540, 567, 316);
-                field(g, "weapons", "Bewaffnung", weapons ? "Bordkanone  ›" : "Unbewaffnet  ›", 880, 567, 324);
-
-                panel(g, 48, 596, 440, 82);
-                text(g, "TRAININGSSZENARIO", 72, 626, 12, ACCENT, true);
-                text(g, count + " Gegner · " + DogfightSettings.Difficulty.values()[difficultyIndex].label, 72, 653, 15, WHITE, false);
-                text(g, "BEREIT ZUM START", 50, 728, 11, MUTED, true);
-                text(g, "Starthöhe über Gelände · Terrain lädt vor dem Flugstart.", 50, 752, 14, MUTED, false);
-                button(g, "start", "DOGFIGHT STARTEN   →", 912, 706, 320, 58, true);
-            } finally {
-                g.dispose();
-            }
-        }
-
-        private void field(Graphics2D g, String id, String title, String value, int x, int y, int w) {
-            label(g, title, x, y);
-            button(g, id, value, x, y + 15, w, 46, false);
-        }
-        private void label(Graphics2D g, String value, int x, int y) {
-            text(g, value, x, y, 14, MUTED, false);
-        }
-        private void panel(Graphics2D g, int x, int y, int w, int h) {
-            g.setColor(new Color(25, 39, 57));
-            g.fillRoundRect(x, y, w, h, 20, 20);
-            g.setColor(new Color(47, 65, 85));
-            g.drawRoundRect(x, y, w, h, 20, 20);
-        }
-        private void button(Graphics2D g, String id, String value, int x, int y, int w, int h, boolean primary) {
-            bounds.put(id, new Rectangle(offsetX + Math.round(x * scale), offsetY + Math.round(y * scale),
-                    Math.round(w * scale), Math.round(h * scale)));
-            g.setColor(primary ? ACCENT : new Color(35, 53, 74));
-            g.fillRoundRect(x, y, w, h, 12, 12);
-            g.setColor(primary ? ACCENT : new Color(63, 83, 106));
-            g.drawRoundRect(x, y, w, h, 12, 12);
-            g.setFont(new Font("SansSerif", Font.BOLD, value.length() > 22 ? 13 : 15));
-            FontMetrics metrics = g.getFontMetrics();
-            g.setColor(primary ? new Color(12, 35, 40) : WHITE);
-            g.drawString(English.text(value), x + (w - metrics.stringWidth(English.text(value))) / 2,
-                    y + (h - metrics.getHeight()) / 2 + metrics.getAscent());
-        }
-        private void text(Graphics2D g, String value, int x, int y, int size, Color color, boolean bold) {
-            g.setColor(color);
-            g.setFont(new Font("SansSerif", bold ? Font.BOLD : Font.PLAIN, size));
-            g.drawString(English.text(value), x, y);
-        }
+        private int count=1,difficultyIndex=1,regionIndex=0,altitudeIndex=3,distanceIndex=2;private boolean weapons=true;
+        private static final float[] HEIGHTS={600,1000,2000,3000,4000,6000},DISTANCES={1000,3000,5000,8000,10000};
+        private DogfightSettings settings(){return new DogfightSettings(DogfightSettings.Region.values()[regionIndex],DogfightSettings.Difficulty.values()[difficultyIndex],count,HEIGHTS[altitudeIndex],DISTANCES[distanceIndex],weapons);}
     }
 }

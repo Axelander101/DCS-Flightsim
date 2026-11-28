@@ -1,0 +1,23 @@
+Terrain elevation sources – DSC
+
+Primary source: swissALTI3D, Federal Office of Topography swisstopo.
+https://www.swisstopo.admin.ch/en/height-model-swissalti3d
+Published 2 m LV95 / LN02 rasters selected from the official STAC catalog.
+https://data.geo.admin.ch/api/stac/v1/collections/ch.swisstopo.swissalti3d
+
+Fallback for tiles absent from the Swiss catalog: Mapzen Terrain Tiles on AWS.
+Accessed 2026-11-25. https://registry.opendata.aws/terrain-tiles/
+https://github.com/tilezen/joerd/blob/master/docs/attribution.md
+Europe: Produced using Copernicus data and information funded by the European Union – EU-DEM layers.
+Global SRTM and GMTED2010: U.S. Geological Survey.
+Austria: © offene Daten Österreichs.
+Source-specific attribution and license details are at the linked provider documentation.
+
+Fallback source tiles are read at Web Mercator zoom 12 (about 26 m sampling at
+Swiss latitudes), then bilinearly resampled into a 500x500 float TIFF for the
+existing one-kilometre LV95 grid. Resampling does not create 2 m measurement
+accuracy. Borders and source vertical datums may show small height differences.
+Raster TIFFs are internal elevation grids: georeferencing is supplied by their
+TerrainTile key, as in the existing loader. Source PNGs are kept in a bounded
+shared RAM cache; only the resulting terrain_X-Z.tif is stored in the normal
+per-session disk cache, which is removed by DownloadCache on shutdown.

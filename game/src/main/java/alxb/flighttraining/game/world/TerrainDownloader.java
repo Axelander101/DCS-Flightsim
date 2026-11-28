@@ -1,7 +1,5 @@
 package alxb.flighttraining.game.world;
 
-import com.google.gson.JsonParser;
-import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,7 +12,6 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -22,12 +19,10 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 
 /** Sechs Worker laden Höhendaten und Luftbilder in denselben Karten-Cache. */
 public final class TerrainDownloader implements AutoCloseable {
-    private static final int DATA_YEAR = 2024;
     private static final long RETRY_DELAY_NANOS = Duration.ofSeconds(30).toNanos();
     private enum Kind { HEIGHT, TEXTURE }
 
@@ -39,12 +34,6 @@ public final class TerrainDownloader implements AutoCloseable {
             return "texture_" + tile.x() + "-" + tile.z() + ".png";
         }
 
-        URI uri() {
-            if (kind == Kind.HEIGHT) {
-                return sourceUri(tile);
-            }
-            return textureUri(tile);
-        }
     }
 
     private static final class Download {
@@ -54,6 +43,7 @@ public final class TerrainDownloader implements AutoCloseable {
     }
 
     private final HttpClient client;
+    private final RegionalHeightFallback regionalHeights;
     private final Path cacheDirectory;
     private final ThreadPoolExecutor workers = new ThreadPoolExecutor(
             6, 6, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
@@ -63,7 +53,7 @@ public final class TerrainDownloader implements AutoCloseable {
     private boolean closed;
 
     public TerrainDownloader() {
-        this(Path.of("terrain-cache"), HttpClient.newBuilder()
+        this(DownloadCache.directory("terrain-cache"), HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build());
@@ -72,6 +62,8 @@ public final class TerrainDownloader implements AutoCloseable {
     TerrainDownloader(Path cacheDirectory, HttpClient client) {
         this.cacheDirectory = cacheDirectory;
         this.client = client;
+        this.regionalHeights = new RegionalHeightFallback(client);
+        DownloadCache.register(this);
     }
 
     public CompletableFuture<Path> downloadTile(int tileX, int tileZ) {
@@ -101,71 +93,6 @@ public final class TerrainDownloader implements AutoCloseable {
         downloads.put(resource, download);
         workers.execute(download.task);
         return download.result;
-    }
-
-    static URI sourceUri(TerrainTile tile) {
-        String item = "swissalti3d_" + DATA_YEAR + "_" + tile.x() + "-" + tile.z();
-        return URI.create("https://data.geo.admin.ch/ch.swisstopo.swissalti3d/"
-                + item + "/" + item + "_2_2056_5728.tif");
-    }
-
-    private URI findHeightAsset(TerrainTile tile) throws IOException, InterruptedException {
-        // Approximate LV95 to WGS84 at the centre of the 1 km tile.
-        double e = (tile.x() * 1000.0 + 500.0 - 2600000.0) / 1000000.0;
-        double n = (tile.z() * 1000.0 + 500.0 - 1200000.0) / 1000000.0;
-        double lon = (2.6779094 + 4.728982 * e + 0.791484 * e * n
-                + 0.1306 * e * n * n - 0.0436 * e * e * e) * 100.0 / 36.0;
-        double lat = (16.9023892 + 3.238272 * n - 0.270978 * e * e
-                - 0.002528 * n * n - 0.0447 * e * e * n - 0.0140 * n * n * n)
-                * 100.0 / 36.0;
-        String bbox = String.format(Locale.ROOT, "%.7f,%.7f,%.7f,%.7f",
-                lon - 0.0001, lat - 0.0001, lon + 0.0001, lat + 0.0001);
-        URI query = URI.create("https://data.geo.admin.ch/api/stac/v1/collections/"
-                + "ch.swisstopo.swissalti3d/items?bbox=" + bbox + "&limit=100");
-        HttpResponse<String> response = client.send(
-                HttpRequest.newBuilder(query).timeout(Duration.ofSeconds(20)).GET().build(),
-                HttpResponse.BodyHandlers.ofString()
-        );
-        if (response.statusCode() != 200) {
-            throw new IOException("Höhenkatalog antwortet mit HTTP " + response.statusCode());
-        }
-
-        Pattern fileName = Pattern.compile("swissalti3d_([0-9]{4})_"
-                + tile.x() + "-" + tile.z() + "_2_2056_5728[.]tif");
-        var features = JsonParser.parseString(response.body()).getAsJsonObject()
-                .getAsJsonArray("features");
-        if (features == null) {
-            throw new IOException("Höhenkatalog liefert keine Feature-Liste.");
-        }
-        URI newestAsset = null;
-        int newestYear = 0;
-        for (var feature : features) {
-            JsonObject assets = feature.getAsJsonObject().getAsJsonObject("assets");
-            if (assets == null) {
-                continue;
-            }
-            for (var entry : assets.entrySet()) {
-                var href = entry.getValue().getAsJsonObject().get("href");
-                if (href == null || !href.isJsonPrimitive()) {
-                    continue;
-                }
-                URI uri = URI.create(href.getAsString());
-                String path = uri.getPath();
-                if (!"https".equals(uri.getScheme())
-                        || !"data.geo.admin.ch".equalsIgnoreCase(uri.getHost()) || path == null) {
-                    continue;
-                }
-                var match = fileName.matcher(path.substring(path.lastIndexOf('/') + 1));
-                if (match.matches()) {
-                    int year = Integer.parseInt(match.group(1));
-                    if (year > newestYear) {
-                        newestYear = year;
-                        newestAsset = uri;
-                    }
-                }
-            }
-        }
-        return newestAsset;
     }
 
     private HttpResponse<Path> fetchFile(URI uri, Path temporary)
@@ -220,32 +147,17 @@ public final class TerrainDownloader implements AutoCloseable {
             if (!isCurrent(resource, download)) {
                 return;
             }
-            URI uri = resource.uri();
+            URI uri = resource.kind()==Kind.HEIGHT
+                    ? HeightAssetCatalog.find(client,resource.tile()) : textureUri(resource.tile());
+            if(!isCurrent(resource,download))return;
             temporary = Files.createTempFile(cacheDirectory, resource.fileName() + "-", ".part");
-            HttpResponse<Path> response = fetchFile(uri, temporary);
-            if (response.statusCode() == 404 && resource.kind() == Kind.HEIGHT
-                    && isCurrent(resource, download)) {
-                URI catalogAsset = findHeightAsset(resource.tile());
-                if (catalogAsset != null && isCurrent(resource, download)) {
-                    uri = catalogAsset;
-                    System.out.println("Höhenkachel aus swisstopo-Katalog: " + uri);
-                    response = fetchFile(uri, temporary);
-                    if (response.statusCode() == 404) {
-                        throw new IOException("Höhenkatalog-Datei fehlt (HTTP 404): " + uri);
-                    }
-                }
-            }
-            if (response.statusCode() == 404) {
-                synchronized (this) {
-                    if (isCurrent(resource, download)) {
-                        System.err.println("Kartendatei nicht verfügbar (HTTP 404): " + resource.uri());
-                        download.result.complete(null);
-                    }
-                }
-                return;
-            }
-            if (response.statusCode() != 200) {
-                throw new IOException("HTTP " + response.statusCode() + " für " + uri);
+            if(resource.kind()==Kind.HEIGHT && uri==null) {
+                regionalHeights.write(resource.tile(),temporary);
+                System.out.println("Regionale Ersatz-Höhendaten: " + resource.tile().x()+"-"+resource.tile().z());
+            } else {
+                HttpResponse<Path> response=fetchFile(uri,temporary);
+                // A stale published URL is transient, never a permanent missing tile.
+                if(response.statusCode()!=200)throw new IOException("HTTP "+response.statusCode()+" für "+uri);
             }
             if (!isCurrent(resource, download)) {
                 return;
@@ -342,16 +254,23 @@ public final class TerrainDownloader implements AutoCloseable {
     }
 
     @Override
-    public synchronized void close() {
-        if (closed) {
-            return;
+    public void close() {
+        synchronized(this) {
+            if(closed)return;
+            closed=true;
+            for(Download download:downloads.values()) {
+                download.result.completeExceptionally(new CancellationException("Game closed"));
+                download.task.cancel(true);
+            }
+            downloads.clear();workers.shutdownNow();client.shutdownNow();regionalHeights.clear();
         }
-        closed = true;
-        for (Download download : downloads.values()) {
-            download.result.completeExceptionally(new CancellationException("Spiel beendet"));
+        boolean interrupted=Thread.interrupted();
+        try {
+            while(!workers.isTerminated())try { workers.awaitTermination(1,TimeUnit.SECONDS); }
+            catch(InterruptedException e){interrupted=true;}
+        } finally {
+            DownloadCache.unregister(this);
+            if(interrupted)Thread.currentThread().interrupt();
         }
-        downloads.clear();
-        workers.shutdownNow();
-        client.shutdownNow();
     }
 }

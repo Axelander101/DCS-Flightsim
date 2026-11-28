@@ -30,13 +30,13 @@ public final class LoadingScreen {
         layer.setLocalTranslation(0,0,100);
         layer.attachChild(backdrop);
         title=text(font,38,ColorRGBA.White);title.setText(English.text("FLIGHT TRAINING"));
-        caption=text(font,14,new ColorRGBA(.35f,.8f,1,1));caption.setText(English.text("FLUG WIRD VORBEREITET"));
+        caption=text(font,14,new ColorRGBA(.87f,.67f,.33f,1));caption.setText(English.text("FLUG WIRD VORBEREITET"));
         status=text(font,17,new ColorRGBA(.85f,.9f,.96f,1));
         percentage=text(font,18,ColorRGBA.White);
         hint=text(font,13,new ColorRGBA(.68f,.75f,.84f,1));hint.setText(English.text("Terrain und Umgebung werden für deinen Start vorbereitet."));
         track=rectangle("LoadingTrack",new ColorRGBA(.18f,.24f,.32f,1));
-        fill=rectangle("LoadingProgress",new ColorRGBA(.25f,.76f,1,1));
-        runner=rectangle("LoadingActivity",new ColorRGBA(.65f,.91f,1,1));
+        fill=rectangle("LoadingProgress",new ColorRGBA(.87f,.67f,.33f,1));
+        runner=rectangle("LoadingActivity",new ColorRGBA(1,.84f,.58f,1));
     }
     private BitmapText text(BitmapFont font,int size,ColorRGBA color){
         BitmapText text=new BitmapText(font);text.setSize(size);text.setColor(color);layer.attachChild(text);return text;
@@ -46,8 +46,9 @@ public final class LoadingScreen {
         material.setColor("Color",color);geometry.setMaterial(material);layer.attachChild(geometry);return geometry;
     }
     public void begin(int width,int height){
-        if(photo==null)photo=MenuImages.load(assets,"LSZH","Zürich");
+        if(photo==null)photo=MenuTheme.photo(assets);
         target=displayed=clock=0;active=true;status.setText(English.text("Höhendaten werden angefordert …"));
+        title.setCullHint(Spatial.CullHint.Always);caption.setCullHint(Spatial.CullHint.Always);
         layout(width,height);gui.attachChild(layer);percentage.setText(English.text("…"));update(0,width,height);
     }
     public void progress(String message,float progress){
@@ -84,9 +85,13 @@ public final class LoadingScreen {
             g.setColor(new Color(4,12,24,105));g.fillRect(0,0,this.width,this.height);
             g.setPaint(new GradientPaint(0,0,new Color(3,10,20,20),0,this.height,new Color(3,10,20,245)));
             g.fillRect(0,0,this.width,this.height);
+            MenuTheme.quality(g);
+            MenuTheme.text(g,"DSC  /  FLIGHT TRAINING",Math.round(margin()),Math.round(this.height-barY()-155),14,MenuTheme.ACCENT,true);
+            MenuTheme.text(g,"Preparing flight",Math.round(margin()),Math.round(this.height-barY()-102),36,MenuTheme.TEXT,true);
         }finally{g.dispose();}
         Texture2D texture=new Texture2D(new AWTLoader().load(image,true));
-        backdrop.setTexture(assets,texture,false);backdrop.setWidth(this.width);backdrop.setHeight(this.height);
+        var previous=backdrop.getMaterial()==null?null:backdrop.getMaterial().getTextureParam("Texture");var old=previous==null?null:previous.getTextureValue();
+        backdrop.setTexture(assets,texture,false);if(old!=null&&old.getImage()!=null)old.getImage().dispose();backdrop.setWidth(this.width);backdrop.setHeight(this.height);
         caption.setLocalTranslation(margin(),barY()+170,2);
         title.setSize(Math.min(38,Math.max(22,(this.width-2*margin())/15)));title.setLocalTranslation(margin(),barY()+140,2);
         status.setBox(new com.jme3.font.Rectangle(0,0,barWidth(),60));

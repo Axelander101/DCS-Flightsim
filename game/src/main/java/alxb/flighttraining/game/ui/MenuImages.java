@@ -16,10 +16,30 @@ import javax.imageio.ImageIO;
 final class MenuImages {
     private static final Logger LOG = Logger.getLogger(MenuImages.class.getName());
     private MenuImages() {}
+    private static final java.util.Properties credits = new java.util.Properties();
+    private static boolean creditsLoaded;
+
+    static String credit(AssetManager assets, String code) {
+        if (!creditsLoaded) {
+            creditsLoaded = true;
+            try {
+                AssetInfo info = assets.locateAsset(new AssetKey<>("Airports/photo-credits.properties"));
+                if (info != null) try (InputStream stream = info.openStream()) {
+                    credits.load(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
+                }
+            } catch (IOException | RuntimeException ex) {
+                LOG.warning("Photo credits: " + ex.getMessage());
+            }
+        }
+        return credits.getProperty(code, "");
+    }
 
     static BufferedImage load(AssetManager assets, String code, String displayName) {
         Set<String> paths = new LinkedHashSet<>();
-        if (code != null) paths.add("Airports/" + code + ".png");
+        if (code != null) {
+            paths.add("Airports/" + code + ".jpg");
+            paths.add("Airports/" + code + ".png");
+        }
         String legacy = "Airports/" + displayName + ".png";
         paths.add(Normalizer.normalize(legacy, Normalizer.Form.NFC));
         paths.add(Normalizer.normalize(legacy, Normalizer.Form.NFD));

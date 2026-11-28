@@ -1,0 +1,1 @@
+Original single-bay maintenance hangar, 28 m wide x 32 m deep, ridge 11.5 m. Metres, Blender Z-up exported to glTF Y-up. Main opening toward glTF +Z. Embedded texture; about 4,086 vertices before glTF seam splits. Model is used for menu-photo staging. It is not automatically placed over existing georeferenced airport buildings.

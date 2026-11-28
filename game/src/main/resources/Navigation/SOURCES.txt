@@ -1,0 +1,3 @@
+Cartography: ©swisstopo. Prepared 2026-11-27 from ch.swisstopo.pixelkarte-farbe via WMS EPSG:2056. Bounds and pixel sizes: atlas.json. Images recompressed to JPEG. Source attribution is also displayed in the cockpit. These are background maps for a game, not aeronautical charts.
+https://docs.geo.admin.ch/visualize-data/wms.html
+https://www.swisstopo.admin.ch/en/terms-of-use-free-geodata-and-geoservices

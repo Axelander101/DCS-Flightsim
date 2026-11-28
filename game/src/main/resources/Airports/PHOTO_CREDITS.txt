@@ -1,0 +1,49 @@
+LSZR – Aerial image of the St. Gallen-Altenrhein airfield.jpg
+Photo: Carsten Steger
+CC BY-SA 4.0 – https://creativecommons.org/licenses/by-sa/4.0
+Source: https://commons.wikimedia.org/wiki/File:Aerial_image_of_the_St._Gallen-Altenrhein_airfield.jpg
+Changes: JPEG recompression and reduced dimensions; menu display crops proportionally and adds a separate dark overlay.
+
+LSZA – Aerial image of the Lugano airport.jpg
+Photo: Carsten Steger
+CC BY-SA 4.0 – https://creativecommons.org/licenses/by-sa/4.0
+Source: https://commons.wikimedia.org/wiki/File:Aerial_image_of_the_Lugano_airport.jpg
+Changes: JPEG recompression and reduced dimensions; menu display crops proportionally and adds a separate dark overlay.
+
+LSZG – Aerial image of the Grenchen airport.jpg
+Photo: Carsten Steger
+CC BY-SA 4.0 – https://creativecommons.org/licenses/by-sa/4.0
+Source: https://commons.wikimedia.org/wiki/File:Aerial_image_of_the_Grenchen_airport.jpg
+Changes: JPEG recompression and reduced dimensions; menu display crops proportionally and adds a separate dark overlay.
+
+LSGS – Aerial image of the Sion airport.jpg
+Photo: Carsten Steger
+CC BY-SA 4.0 – https://creativecommons.org/licenses/by-sa/4.0
+Source: https://commons.wikimedia.org/wiki/File:Aerial_image_of_the_Sion_airport.jpg
+Changes: JPEG recompression and reduced dimensions; menu display crops proportionally and adds a separate dark overlay.
+
+LSME – Line up Emmen.jpg
+Photo: Hornet Driver
+CC BY-SA 3.0 – https://creativecommons.org/licenses/by-sa/3.0
+Source: https://commons.wikimedia.org/wiki/File:Line_up_Emmen.jpg
+Changes: JPEG recompression and reduced dimensions; cropped surplus sky/foreground; menu display crops proportionally and adds a separate dark overlay.
+
+LSMM – Flugplatz Meiringen - panoramio.jpg
+Photo: qwesy qwesy
+CC BY 3.0 – https://creativecommons.org/licenses/by/3.0
+Source: https://commons.wikimedia.org/wiki/File:Flugplatz_Meiringen_-_panoramio.jpg
+Changes: JPEG recompression and reduced dimensions; menu display crops proportionally and adds a separate dark overlay.
+
+LSZB – Bern Airport Overview.jpg
+Photo: Lszb29
+CC BY-SA 3.0 – https://creativecommons.org/licenses/by-sa/3.0
+Source: https://commons.wikimedia.org/wiki/File:Bern_Airport_Overview.jpg
+Changes: JPEG recompression and reduced dimensions; menu display crops proportionally and adds a separate dark overlay.
+
+LSGG – Geneva airport from air 2.jpg
+Photo: Brücke-Osteuropa
+CC0 – http://creativecommons.org/publicdomain/zero/1.0/deed.en
+Source: https://commons.wikimedia.org/wiki/File:Geneva_airport_from_air_2.jpg
+Changes: JPEG recompression and reduced dimensions; menu display crops proportionally and adds a separate dark overlay.
+
+Each photo adaptation retains the license stated above. These image licenses do not apply to the Java source code.

@@ -122,7 +122,7 @@ public final class TerrainStreaming implements AutoCloseable {
             return "Höhendownload fehlgeschlagen: " + name + ". Neuer Versuch folgt.";
         }
         if (completedPath(height) == null) {
-            return "Keine Höhendaten für " + name + " (HTTP 404). Startposition prüfen.";
+            return "Keine Höhendaten für " + name + ". Kartenabdeckung prüfen.";
         }
         if (loadedTiles.containsKey(tile)) {
             return "Keine gültige Bodenhöhe am Startpunkt in Kachel " + name;
@@ -487,15 +487,10 @@ public final class TerrainStreaming implements AutoCloseable {
 
 
     private int textureSize(TerrainTile tile){
-        int resolution=resolution(tile);return resolution==513?1024:resolution==129?512:128;
+        return TerrainQuality.textureSize(tilePosition(tile).distance(currentPosition),textureResolution.getOrDefault(tile,0));
     }
     private int resolution(TerrainTile tile){
-        float distance=tilePosition(tile).distance(currentPosition);
-        int old=tileResolution.getOrDefault(tile,0);
-        if(old==513 && distance<2500)return 513;
-        if(old==129 && distance>1900 && distance<5800)return 129;
-        if(old==65 && distance>5100)return 65;
-        return distance<2200?513:distance<5500?129:65;
+        return TerrainQuality.meshSize(tilePosition(tile).distance(currentPosition),tileResolution.getOrDefault(tile,0));
     }
     private boolean isInView(Camera cam, BoundingBox bounds) {
         int savedPlaneState = cam.getPlaneState();

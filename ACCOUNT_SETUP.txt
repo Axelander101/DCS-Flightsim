@@ -1,0 +1,104 @@
+DSC – Supabase-Accounts einrichten
+
+Stand: 27. November 2026. Die Java-Integration ist eingebaut; es wurde noch kein
+Supabase-Projekt angelegt. Ohne Konfiguration funktionieren lokale Piloten weiter.
+Im Hauptmenü SIGN IN / REGISTER öffnen. Nach der Konfiguration erscheint die
+Account-Seite auch beim Start; MAIN MENU erlaubt weiterhin lokale Flüge.
+
+1. Kostenloses Projekt erstellen
+https://supabase.com/dashboard
+Supabase-Konto erstellen, New project, Free-Tarif und eine passende europäische
+Region auswählen. Das Datenbank-Administrationspasswort bleibt im Dashboard bzw.
+in deinem Passwortmanager: Es gehört NICHT in das Spiel.
+
+2. E-Mail-Anmeldung konfigurieren
+Unter Authentication den Email/Password-Provider und neue Registrierungen
+aktivieren. Confirm email einschalten. Mindestlänge für Passwörter auf 12 setzen.
+Im Spiel wird mit E-Mail + Passwort angemeldet, der frei wählbare Pilotennamen
+ist ein Anzeigename. Er muss nicht weltweit eindeutig sein. Das Spiel akzeptiert
+neue Passwörter ab 12 Zeichen bis maximal 72 UTF-8-Bytes, ohne sie zu kürzen.
+
+3. E-Mail-Vorlagen auf Codes umstellen
+Authentication > Email Templates:
+- Confirm sign up: Inhalt aus account-setup/confirm-signup.html übernehmen.
+- Reset password: Inhalt aus account-setup/reset-password.html übernehmen.
+Die Vorlagen verwenden {{ .Token }}. Dadurch gibt man den Zahlencode direkt im
+Spiel ein. Kein eigener Webserver, Browser-Callback oder Steam nötig.
+Code-Ablaufzeit und Versandlimits werden von Supabase durchgesetzt. Die zwei
+Vorlagen nicht vertauschen; Confirm email und Reset password sind getrennte Flows.
+
+4. E-Mail-Versand beachten
+Der eingebaute Supabase-Testversand ist aktuell auf Team-Adressen beschränkt
+und stark limitiert. Zum ersten Test die E-Mail des Supabase-Projektbesitzers
+verwenden. Für andere Spieler muss in Authentication > SMTP ein eigener
+SMTP-Anbieter eingerichtet werden. Dessen Zugangsdaten NUR dort hinterlegen,
+niemals im Spiel. Anbieterlimits und gegebenenfalls Domain-/Versandkosten sind
+separat zu prüfen. Die Bestätigung nicht nur deshalb abschalten.
+https://supabase.com/docs/guides/auth/auth-smtp
+
+5. Öffentliche Client-Konfiguration eintragen
+Project URL und Publishable key aus dem Supabase-Dashboard holen.
+Nur ein Schlüssel mit sb_publishable_… wird akzeptiert. Niemals sb_secret_…,
+service_role, Datenbankpasswort oder Supabase-Zugangspasswort verwenden.
+
+game/src/main/resources/Config/supabase.properties im DSC-Projekt bearbeiten:
+url=https://DEINE-PROJEKT-ID.supabase.co
+publishableKey=sb_publishable_DEIN_OEFFENTLICHER_SCHLUESSEL
+Danach neu bauen und das Spiel neu starten. Diese beiden Werte dürfen mit der
+Desktop-App verteilt werden; sie ersetzen keine Zugriffskontrollen für Daten.
+
+Alternative pro Gerät (überschreibt die gebündelte Datei):
+~/Library/Application Support/DSC/supabase.properties
+Andere Systeme: Datei neben dem lokalen pilots-Ordner.
+Test-/Startoption: -Ddsc.authConfig=/absoluter/pfad/supabase.properties
+Weitere Optionen: DSC_SUPABASE_URL, DSC_SUPABASE_PUBLISHABLE_KEY (Umgebung),
+oder -Ddsc.supabaseUrl=… und -Ddsc.supabaseKey=… .
+Die -D-/Umgebungswerte haben Vorrang vor Dateiwerten. Eine vorhandene externe
+Datei ersetzt die gebündelte Datei. Unvollständige/falsche Konfiguration deaktiviert
+Online-Accounts, bis sie korrigiert und das Spiel neu gestartet wurde.
+
+6. Live-Test nach Einrichtung
+REGISTER: Pilotennamen, E-Mail, Passwort, Bestätigung eingeben. Danach im Tab
+CONFIRM EMAIL E-Mail und Code aus der Nachricht eingeben. Alternativ mit einer
+bestehenden Link-Vorlage im Browser bestätigen und danach SIGN IN verwenden.
+SIGN OUT testen, dann SIGN IN mit E-Mail + Passwort.
+RESET PASSWORD: E-Mail eintragen, SEND RESET CODE drücken, Code und neues
+Passwort zweimal eingeben, SAVE NEW PASSWORD drücken.
+Anschließend auf einem zweiten Computer mit derselben Projekt-Konfiguration
+anmelden: Account-ID und Pilotennamen bleiben gleich. Flugstatistiken sind
+noch NICHT zwischen Computern synchronisiert.
+
+Speicherung und Grenzen
+Supabase Auth verwaltet gesalzene Passwort-Hashes serverseitig. Das Spiel
+speichert keine Passwörter, Hashes oder Zugangstokens dauerhaft. Sitzung und
+Refresh-Token bleiben nur im Arbeitsspeicher, daher nach Neustart neu anmelden.
+Es gibt automatische Token-Erneuerung, Sign-out dieser Sitzung und verständliche
+Fehler bei falschen Zugangsdaten, E-Mail-Bestätigung, Versand-/Anfragelimits.
+Ohne Internet bleiben lokale Piloten nutzbar. Abmelden entfernt die Sitzung auch
+bei einem Netzfehler lokal; serverseitig kann sie dann bis zum Ablauf bestehen.
+
+Account-Flugprotokolle liegen lokal unter pilots/accounts/PROJEKT-UUID/USER-UUID/;
+bestehende Gastprofile werden weder überschrieben noch automatisch hochgeladen.
+Die lokalen Statistikdateien sind nicht verschlüsselt und auf dem Gerät editierbar;
+sie sind keine serverseitig bestätigten Ranglisten. Das Passwort schützt den
+Online-Account, nicht alle lokalen Dateien vor einem Geräteadministrator.
+Der bestehende Peer-to-Peer-Multiplayer übernimmt den Namen, prüft aber noch keine
+Supabase-Identität seiner Mitspieler. Gast-Multiplayer bleibt verfügbar. Lobbycode
+und Lobby-Passwort bleiben separate Funktionen.
+Cloud-Speicherstände, globale Namensreservierung, Konto-Löschen in der UI, MFA,
+CAPTCHA-Webflow und Steam sind nicht Bestandteil dieses Updates. Wenn im Projekt
+CAPTCHA aktiviert wird, muss zunächst ein Browser-CAPTCHA-Flow ergänzt werden.
+Für öffentliche Veröffentlichung sind SMTP, passende Missbrauchsschutz-Einstellungen
+und eine accountbezogene serverseitige Prüfung im Multiplayer als eigene Schritte
+zu ergänzen. Dafür niemals Service-Schlüssel in den Desktop-Client einbauen.
+
+Prüfung dieses Updates
+Kompilierung, simulierte Auth-REST-Antworten, tatsächliche Formularbedienung und
+separate lokale Flugprotokolle wurden geprüft. Ein Live-End-to-End-Test gegen
+dein Supabase-Projekt bleibt nach den Schritten oben erforderlich.
+
+Offizielle Grundlagen
+https://supabase.com/docs/guides/auth/passwords
+https://supabase.com/docs/guides/auth/password-security
+https://supabase.com/docs/guides/auth/auth-email-templates
+https://supabase.com/docs/guides/getting-started/api-keys

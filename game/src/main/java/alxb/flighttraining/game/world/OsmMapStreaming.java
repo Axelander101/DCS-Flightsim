@@ -15,8 +15,9 @@ import org.w3c.dom.*;
 final class OsmMapStreaming implements AutoCloseable {
  private final ExecutorService worker=Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().name("osm-map-loader").factory());
  private final Map<String,Long> attempted=new HashMap<>();
- private final Path cache=Path.of("map-cache");
+ private final Path cache=DownloadCache.directory("map-cache");
  private final HttpClient client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NORMAL).build();
+ OsmMapStreaming(){DownloadCache.register(this);}
  private Future<List<JsonObject>> pending;
  private String current;
  private long next;
@@ -55,7 +56,9 @@ final class OsmMapStreaming implements AutoCloseable {
    if(bytes.length>20_000_000)throw new IOException("Kartenabschnitt zu groß");
    // Vor dem Speichern parsen, damit Fehlerantworten nicht dauerhaft im Cache landen.
    List<JsonObject> entries=parse(new ByteArrayInputStream(bytes));
-   Path temporary=Files.createTempFile(cache,"osm-",".part");Files.write(temporary,bytes);Files.move(temporary,file,StandardCopyOption.REPLACE_EXISTING);
+   Path temporary=Files.createTempFile(cache,"osm-",".part");
+   try { Files.write(temporary,bytes);Files.move(temporary,file,StandardCopyOption.REPLACE_EXISTING); }
+   finally { Files.deleteIfExists(temporary); }
    return entries;
   }
   try(InputStream in=Files.newInputStream(file)){return parse(in);}
@@ -111,5 +114,10 @@ final class OsmMapStreaming implements AutoCloseable {
  private static boolean inside(double x,double z,List<double[]> p){boolean in=false;for(int i=0,j=p.size()-1;i<p.size();j=i++)if((p.get(i)[1]>z)!=(p.get(j)[1]>z)&&x<(p.get(j)[0]-p.get(i)[0])*(z-p.get(i)[1])/(p.get(j)[1]-p.get(i)[1])+p.get(i)[0])in=!in;return in;}
  static double[] lv(double lat,double lon){double a=(lat*3600-169028.66)/10000,b=(lon*3600-26782.5)/10000;return new double[]{2600072.37+211455.93*b-10938.51*b*a-0.36*b*a*a-44.54*b*b*b,1200147.07+308807.95*a+3745.25*b*b+76.63*a*a-194.56*b*b*a+119.79*a*a*a};}
  static double[] wgs(double east,double north){double y=(east-2600000)/1e6,x=(north-1200000)/1e6;return new double[]{(16.9023892+3.238272*x-0.270978*y*y-0.002528*x*x-0.0447*y*y*x-0.014*x*x*x)*100/36,(2.6779094+4.728982*y+0.791484*y*x+0.1306*y*x*x-0.0436*y*y*y)*100/36};}
- public void close(){if(pending!=null)pending.cancel(true);worker.shutdownNow();client.shutdownNow();}
+ public void close(){
+  if(pending!=null)pending.cancel(true);worker.shutdownNow();client.shutdownNow();
+  boolean interrupted=Thread.interrupted();
+  try{while(!worker.isTerminated())try{worker.awaitTermination(1,TimeUnit.SECONDS);}catch(InterruptedException e){interrupted=true;}}
+  finally{DownloadCache.unregister(this);if(interrupted)Thread.currentThread().interrupt();}
+ }
 }

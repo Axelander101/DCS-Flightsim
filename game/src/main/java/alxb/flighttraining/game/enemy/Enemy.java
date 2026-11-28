@@ -27,6 +27,9 @@ public final class Enemy {
     private Node player;
     private FlightPhysics playerPhysics;
     private TerrainStreaming terrain;
+    private alxb.flighttraining.game.combat.CombatWorld combatWorld;
+    public void setCombatWorld(alxb.flighttraining.game.combat.CombatWorld world){combatWorld=world;}
+    public EnemyAircraft aircraft(int index){return enemies.get(index);}
 
     public void configure(Node player, FlightPhysics physics, TerrainStreaming terrain) {
         this.player=player; this.playerPhysics=physics; this.terrain=terrain;
@@ -88,6 +91,8 @@ public final class Enemy {
             EnemyAircraft aircraft = new EnemyAircraft(enemy, player);
             if (settings != null) aircraft.configure(settings);
             aircraft.setSoundEvents(soundFire,soundHit);
+            if(combatWorld!=null)aircraft.configureCombat(combatWorld);
+            aircraft.setMissileDelay(8+i*2);
             enemies.add(aircraft);
         }
     }
@@ -96,6 +101,7 @@ public final class Enemy {
         for (EnemyAircraft enemy : enemies) {
             float ground=terrain==null?Float.NaN:terrain.getGroundHeight(enemy.getPosition());
             enemy.update(tpf, player, playerPhysics==null?new Vector3f():playerPhysics.getVelocity(),ground);
+            enemy.getPhysics().resolveGroundCollision(terrain==null?ground:terrain.getGroundHeight(enemy.getPosition()));
         }
     }
 

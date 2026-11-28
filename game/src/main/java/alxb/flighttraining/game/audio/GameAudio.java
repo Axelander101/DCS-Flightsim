@@ -31,7 +31,7 @@ public final class GameAudio {
     private AudioNode voice;
     private final float[] previous=new float[6];
     public GameAudio(AssetManager assets,Node scene,Listener listener,AudioRenderer renderer,InputManager input){
-        this.listener=listener!=null?listener:new Listener();available=renderer!=null;scene.attachChild(root);setVolume(master);
+        this.listener=listener!=null?listener:new Listener();available=renderer!=null;scene.attachChild(root);master=alxb.flighttraining.game.config.GameSettings.get().fraction(alxb.flighttraining.game.config.GameSettings.Option.MASTER);unmuted=master;setVolume(master);
         try(var reader=new InputStreamReader(assets.locateAsset(new com.jme3.asset.AssetKey<>("Sounds/Flight/manifest.json")).openStream(),StandardCharsets.UTF_8)){
             for(var entry:JsonParser.parseReader(reader).getAsJsonObject().entrySet()){
                 String name=entry.getKey();duration.put(name,entry.getValue().getAsJsonObject().get("seconds").getAsFloat());
@@ -47,32 +47,43 @@ public final class GameAudio {
         for(String name:new String[]{"AudioMute","AudioDown","AudioUp"})input.addMapping(name,new KeyTrigger(name.equals("AudioMute")?KeyInput.KEY_F8:name.equals("AudioDown")?KeyInput.KEY_F9:KeyInput.KEY_F10));
         ActionListener controls=(name,pressed,tpf)->{if(!pressed)return;if(name.equals("AudioMute"))toggleMute();else setVolume(master+(name.equals("AudioUp")?.1f:-.1f));};input.addListener(controls,"AudioMute","AudioDown","AudioUp");
     }
+    private float mix(String name){
+        var profile=alxb.flighttraining.game.config.GameSettings.get();
+        var channel=switch(name){
+            case "engine_idle","engine_power","afterburner" -> alxb.flighttraining.game.config.GameSettings.Option.ENGINE;
+            case "cannon","launch","impact","explosion","seeker" -> alxb.flighttraining.game.config.GameSettings.Option.WEAPONS;
+            case "wind","touchdown","brakes","hydraulics","gear" -> alxb.flighttraining.game.config.GameSettings.Option.ENVIRONMENT;
+            case "caution","threat","terrain","stall","speed","gear_speed","g_limit" -> alxb.flighttraining.game.config.GameSettings.Option.WARNINGS;
+            case "switch","switch_heavy","contact" -> alxb.flighttraining.game.config.GameSettings.Option.UI;
+            default -> alxb.flighttraining.game.config.GameSettings.Option.RADIO;
+        };return profile.fraction(channel);
+    }
     public float getVolume(){return master;}
     public void toggleMute(){if(master>0){unmuted=master;setVolume(0);}else setVolume(unmuted);}
-    public void uiClick(){AudioNode n=nodes.get("switch");if(available){n.setVolume(.2f);n.playInstance();}}
-    public void setVolume(float value){master=FastMath.clamp(value,0,1);listener.setVolume(master);}
+    public void uiClick(){AudioNode n=nodes.get("switch");if(available){n.setVolume(.2f*mix("switch"));n.playInstance();}}
+    public void setVolume(float value){master=FastMath.clamp(value,0,1);listener.setVolume(master);alxb.flighttraining.game.config.GameSettings.get().setMaster(master);}
     public void reset(){stopAll();active=false;initialized=false;elapsed=gunTime=enemyShotCooldown=0;airport=-1;lastContacts=0;cooldown.clear();}
     private void stop(AudioNode n){if(available)n.stop();}
     private void stopAll(){for(AudioNode n:nodes.values())stop(n);for(AudioNode n:spatial)stop(n);voice=null;voiceTime=0;voicePriority=-1;}
     public void setActive(boolean enabled){if(active==enabled)return;active=enabled;if(!enabled)stopAll();}
     private void loop(String name,float volume,float pitch){
-        AudioNode n=nodes.get(name);volume=FastMath.clamp(volume,0,1);volumes.put(name,volume);n.setVolume(volume);n.setPitch(FastMath.clamp(pitch,.5f,2));
+        AudioNode n=nodes.get(name);volume=FastMath.clamp(volume*mix(name),0,1);volumes.put(name,volume);n.setVolume(volume);n.setPitch(FastMath.clamp(pitch,.5f,2));
         if(!available)return;if(active&&volume>.002f){if(n.getStatus()!=AudioSource.Status.Playing)n.play();}else n.stop();
     }
-    public void effect(String name){if(!active)return;AudioNode n=nodes.get(name);if(n!=null&&available){n.setVolume(.45f);n.playInstance();}}
+    public void effect(String name){if(!active)return;AudioNode n=nodes.get(name);if(n!=null&&available){n.setVolume(.45f*mix(name));n.playInstance();}}
     public void at(String name,Vector3f position){
         if(!active)return;List<AudioNode> pool=pools.get(name);if(pool==null)return;
         if(name.equals("cannon")){if(enemyShotCooldown>0)return;enemyShotCooldown=.10f;}
         if(name.equals("impact")){if(impactCooldown>0)return;impactCooldown=.045f;}
         AudioNode selected=pool.stream().filter(n->n.getStatus()!=AudioSource.Status.Playing).findFirst().orElse(pool.get(0));
-        if(available)selected.stop();selected.setLocalTranslation(root.worldToLocal(position,new Vector3f()));selected.setVolume(name.equals("cannon")?.35f:.65f);if(available)selected.play();
+        if(available)selected.stop();selected.setLocalTranslation(root.worldToLocal(position,new Vector3f()));selected.setVolume((name.equals("cannon")?.35f:.65f)*mix(name));if(available)selected.play();
     }
     public void cannonFire(){if(active)gunTime=.12f;}
     public void rebase(Vector3f delta){root.setLocalTranslation(Vector3f.ZERO);for(AudioNode n:spatial)n.move(delta.negate());}
     private boolean speak(String name,int priority,float repeat){
         if(cooldown.getOrDefault(name,0f)>0||voiceTime>0&&priority<=voicePriority)return false;
         if(voice!=null)stop(voice);voice=nodes.get(name);if(voice==null)return false;
-        voiceTime=duration.get(name)+.15f;voicePriority=priority;cooldown.put(name,repeat);voice.setVolume(.8f);if(available)voice.play();return true;
+        voiceTime=duration.get(name)+.15f;voicePriority=priority;cooldown.put(name,repeat);voice.setVolume(.8f*mix(name));if(available)voice.play();return true;
     }
     public void update(float dt,FlightPhysics physics,Enemy enemies,Node plane,Camera camera,Vector3f absolute,float ground,int stores,boolean weapons){
         if(!active||!Float.isFinite(dt)||dt<=0)return;dt=Math.min(dt,.25f);elapsed+=dt;gunTime=Math.max(0,gunTime-dt);enemyShotCooldown=Math.max(0,enemyShotCooldown-dt);impactCooldown=Math.max(0,impactCooldown-dt);voiceTime=Math.max(0,voiceTime-dt);final float step=dt;cooldown.replaceAll((k,v)->Math.max(0,v-step));
@@ -97,7 +108,7 @@ public final class GameAudio {
         loop("hydraulics",moving?.12f:0,1);System.arraycopy(now,0,previous,0,now.length);initialized=true;grounded=s.isOnGround();engine=physics.isEngineRunning();park=s.isParkingBrake();gearSelection=s.isGearDownSelected();
         float agl=Float.isFinite(ground)?plane.getWorldTranslation().y-ground:Float.POSITIVE_INFINITY;
         boolean terrainWarning=!grounded&&speed>45&&agl<150&&physics.getVerticalSpeed()<-5&&(s.getGear()<.5f||agl/Math.max(1,-physics.getVerticalSpeed())<5);
-        loop("caution",terrainWarning||!grounded&&physics.isStalling()?.07f:0,1);
+        loop("caution",terrainWarning||!grounded&&physics.isStalling()||!s.combat().cautions().isEmpty()?.07f:0,1);
         if(terrainWarning)speak("terrain",3,5);
         else if(!grounded&&physics.isStalling())speak("stall",2,8);
         else if(physics.getMach()>1.8f)speak("speed",2,12);
@@ -107,10 +118,10 @@ public final class GameAudio {
         Vector3f forward=plane.getWorldRotation().mult(Vector3f.UNIT_Z.negate());
         for(int i=0;i<enemies.getCount();i++){
             Vector3f offset=enemies.getPosition(i).subtract(plane.getWorldTranslation());float distance=offset.length();
-            if(distance>1&&distance<5000){contacts++;if(offset.divide(distance).dot(forward)>.7f)seeker=true;}
+            if(distance>1&&distance<4000&&!enemies.aircraft(i).getPhysics().getDamage().destroyed()){contacts++;if(offset.divide(distance).dot(forward)>(float)Math.cos(Math.toRadians(15)))seeker=true;}
         }
         if(contacts>lastContacts&&elapsed>1)effect("contact");lastContacts=contacts;
-        loop("seeker",weapons&&stores>0&&seeker?.08f:0,.5f);
+        loop("seeker",weapons&&physics.getSystems().combat().masterArm()&&stores>0&&seeker?.08f:0,.5f);
         // Proximity only: this does not determine controlled airspace or grant landing clearance.
         DogfightSettings.Region[] regions=DogfightSettings.Region.values();int nearest=-1;float distance=Float.POSITIVE_INFINITY;
         for(int i=0;i<regions.length;i++){float d=(float)Math.hypot(absolute.x-regions[i].x,absolute.z-regions[i].z);if(d<distance){distance=d;nearest=i;}}

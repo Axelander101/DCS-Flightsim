@@ -14,7 +14,7 @@ dependencyResolutionManagement {
         mavenLocal()
     }
 }
-rootProject.name = "FlightTraining"
+rootProject.name = "DCS"
 include ':desktop'
 
 include ':game'

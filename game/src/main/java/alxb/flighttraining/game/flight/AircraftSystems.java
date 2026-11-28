@@ -2,6 +2,10 @@ package alxb.flighttraining.game.flight;
 
 /** Per-aircraft mechanical state. Positions are 0..1, angles radians, time seconds. */
 public final class AircraftSystems {
+    private final alxb.flighttraining.game.combat.AirframeDamage damage=new alxb.flighttraining.game.combat.AirframeDamage();
+    private final alxb.flighttraining.game.combat.HornetCombatSystems combat=new alxb.flighttraining.game.combat.HornetCombatSystems(damage);
+    public alxb.flighttraining.game.combat.AirframeDamage damage(){return damage;}
+    public alxb.flighttraining.game.combat.HornetCombatSystems combat(){return combat;}
     public static final int GEAR=1, AIRBRAKE=2, FLAPS=4, PARKING_BRAKE=8,
             CANOPY=16, HOOK=32, WING_FOLD=64, ENGINE=128, DISPLAY_PAGE=256, DISPLAY_DETAIL=512;
     public enum Flaps { AUTO, HALF, FULL }
@@ -14,12 +18,14 @@ public final class AircraftSystems {
     private float noticeTime;
 
     public void reset(boolean airborne) {
+        damage.reset();combat.reset();
         gearDown=!airborne; gear=gearDown?1:0;
         airbrakeOut=parkingBrake=canopyOpen=hookDown=wingsFolded=onGround=false;
         airbrake=flap=canopy=hook=fold=brake=steering=wheelAngle=noseWheelAngle=noticeTime=0;
         flapMode=Flaps.AUTO; notice="";systemsPage=true;airframePage=false;
     }
     public void command(int commands, float speed) {
+        combat.command(commands);
         if((commands&DISPLAY_DETAIL)!=0)airframePage=!airframePage;
         if((commands&DISPLAY_PAGE)!=0)systemsPage=!systemsPage;
         if ((commands&GEAR)!=0) {
@@ -40,18 +46,20 @@ public final class AircraftSystems {
     }
     private void warn(String text){notice=text;noticeTime=3;}
     public void update(float dt, float airspeed, float alphaDegrees, float yaw, boolean brakeHeld) {
-        gear=approach(gear,gearDown?1:0,dt/3f);
-        airbrake=approach(airbrake,airbrakeOut?1:0,dt/1.2f);
+        combat.update(dt);
+        float hydraulic= combat.controlHydraulics();float poweredDt=dt*hydraulic;
+        gear=approach(gear,gearDown?1:0,damage.health(alxb.flighttraining.game.combat.AirframeDamage.Part.GEAR)>.25f?poweredDt/3f:0);
+        airbrake=approach(airbrake,airbrakeOut?1:0,poweredDt/1.2f);
         canopy=approach(canopy,canopyOpen?1:0,dt/2.5f);
-        hook=approach(hook,hookDown?1:0,dt/1.5f);
-        fold=approach(fold,wingsFolded?1:0,dt/4f);
+        hook=approach(hook,hookDown?1:0,poweredDt/1.5f);
+        fold=approach(fold,wingsFolded?1:0,poweredDt/4f);
         // A game approximation: retract landing flaps progressively at high airspeed.
         float speedLimit=clamp((170-airspeed)/50f,0,1);
         float target=flapMode==Flaps.AUTO?clamp((alphaDegrees-2)/24f,0,.35f)*speedLimit
                 :(flapMode==Flaps.HALF?.5f:1)*speedLimit;
-        flap=approach(flap,target,dt*.6f);
-        brake=parkingBrake||brakeHeld?1:0;
-        float targetSteer=onGround && gear>.99f ? yaw*(float)Math.toRadians(30)
+        flap=approach(flap,target,poweredDt*.6f);
+        brake=(parkingBrake||brakeHeld?1:0)*damage.health(alxb.flighttraining.game.combat.AirframeDamage.Part.GEAR)*Math.max(.2f,combat.hydraulic(2));
+        float targetSteer=onGround && gear>.99f ? yaw*combat.hydraulic(2)*(float)Math.toRadians(30)
                 *clamp(1-airspeed/55f,0,1):0;
         steering=approach(steering,targetSteer,dt*1.5f);
         noticeTime=Math.max(0,noticeTime-dt);

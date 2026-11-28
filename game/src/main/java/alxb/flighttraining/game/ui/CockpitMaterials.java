@@ -46,10 +46,16 @@ final class CockpitMaterials {
                 if (unlit) ready.setColor("Color", color);
                 else {
                     ready.setBoolean("UseMaterialColors", true);
+                    ready.setBoolean("UseVertexColor", geometry.getMesh().getBuffer(com.jme3.scene.VertexBuffer.Type.Color) != null);
                     ready.setColor("Diffuse", color);
                     ready.setColor("Ambient", color);
-                    ready.setColor("Specular", new ColorRGBA(.17f, .18f, .18f, 1));
-                    ready.setFloat("Shininess", 24f);
+                    MatParam roughness = source.getParam("Roughness");
+                    float rough = roughness == null ? .7f : Math.max(.05f, Math.min(1f, ((Number) roughness.getValue()).floatValue()));
+                    MatParam metallic = source.getParam("Metallic");
+                    float metal = metallic == null ? 0 : ((Number) metallic.getValue()).floatValue();
+                    float spec = .025f + .14f * (1 - rough) + .15f * metal;
+                    ready.setColor("Specular", new ColorRGBA(spec, spec, spec, 1));
+                    ready.setFloat("Shininess", 2f + 72f * (1 - rough) * (1 - rough));
                 }
                 if (name.contains("Glass") || name.contains("Labels") || name.contains("HUD_Demo")) {
                     ready.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);

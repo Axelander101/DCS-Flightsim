@@ -236,6 +236,7 @@ public final class FlightSurfaces {
                 (input.yawLeft ? 1f : 0f)
                         - (input.yawRight ? 1f : 0f);
 
+        float pressure=physics.getSystems().combat().controlHydraulics();pitchCommand*=pressure;yawCommand*=pressure;rollCommand*=pressure;
         float maxPitchAngle = (float) Math.toRadians(20f);
         float maxRollAngle = (float) Math.toRadians(20f);
         float maxRudderAngle = (float) Math.toRadians(25f);
@@ -265,11 +266,11 @@ public final class FlightSurfaces {
                 .fromAngleAxis(stabilatorAngle, Vector3f.UNIT_X);
 
         stabilatorLeft.setLocalRotation(
-                neutralLeft.mult(pitchDeflection)
+                neutralLeft.mult(new Quaternion().fromAngleAxis(stabilatorAngle*physics.getDamage().health(alxb.flighttraining.game.combat.AirframeDamage.Part.LEFT_TAIL),Vector3f.UNIT_X))
         );
 
         stabilatorRight.setLocalRotation(
-                neutralRight.mult(pitchDeflection)
+                neutralRight.mult(new Quaternion().fromAngleAxis(stabilatorAngle*physics.getDamage().health(alxb.flighttraining.game.combat.AirframeDamage.Part.RIGHT_TAIL),Vector3f.UNIT_X))
         );
 
 
@@ -334,8 +335,8 @@ public final class FlightSurfaces {
         float aoa = -physics.getAngleOfAttack();
         float intensity = Math.max(0f, Math.min(1f, (aoa - 10f) / 12f));
         float rate = physics.getSpeed() > 50f ? 70f * intensity : 0f;
-        wingVaporLeft.setParticlesPerSec(rate);
-        wingVaporRight.setParticlesPerSec(rate);
+        wingVaporLeft.setParticlesPerSec(physics.getDamage().health(alxb.flighttraining.game.combat.AirframeDamage.Part.LEFT_WING)>.1f?rate:0);
+        wingVaporRight.setParticlesPerSec(physics.getDamage().health(alxb.flighttraining.game.combat.AirframeDamage.Part.RIGHT_WING)>.1f?rate:0);
     }
 
 

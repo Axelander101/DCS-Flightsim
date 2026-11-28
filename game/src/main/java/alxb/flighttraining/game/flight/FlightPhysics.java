@@ -4,6 +4,8 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import java.util.Objects;
+import alxb.flighttraining.game.combat.AirframeDamage;
+import static alxb.flighttraining.game.combat.AirframeDamage.Part.*;
 
 /**
  * Aerodynamische Kräfte mit vereinfachtem Fly-by-Wire und gedämpften Drehraten.
@@ -32,21 +34,24 @@ public final class FlightPhysics {
         this.plane=Objects.requireNonNull(plane);this.input=input;aiInput=commands;
         this.parameters=Objects.requireNonNull(parameters);
         systems.reset(true);
+        var previous=plane.getControl(alxb.flighttraining.game.combat.DamageableAircraft.class);if(previous!=null)plane.removeControl(previous);
+        plane.addControl(new alxb.flighttraining.game.combat.DamageableAircraft(this));
         if(input==null && commands==null)throw new IllegalArgumentException("Steuerquelle fehlt");
     }
     public AircraftSystems getSystems(){return systems;}
-    public boolean isEngineRunning(){return engineRunning;}
+    public boolean isEngineRunning(){return systems.combat().engineRunning(true)||systems.combat().engineRunning(false);}
+    public AirframeDamage getDamage(){return systems.damage();}
     public AircraftParameters getParameters(){return parameters;}
     public void reset(Vector3f initialVelocity,float initialThrottle){
         publishedPosition.x=Float.NaN;
-        setVelocity(initialVelocity);throttle=clamp(initialThrottle,0,1);enginePower=engineRunning?throttle:0;
+        setVelocity(initialVelocity);throttle=clamp(initialThrottle,0,1);enginePower=isEngineRunning()?throttle:0;
         pitchSpeed=yawSpeed=rollSpeed=pitchCommand=rollCommand=yawCommand=normalG=0;
         lastThrust=lastLift=lastDrag=0;
     }
     public void setVelocity(Vector3f value){checkVector(value);velocity.set(value);}
     public void setWindVelocity(Vector3f value){checkVector(value);wind.set(value);}
     public Vector3f getWindVelocity(){return wind.clone();}
-    public void setEngineRunning(boolean value){engineRunning=value;}
+    public void setEngineRunning(boolean value){engineRunning=value;systems.combat().setBothEngines(value);}
     public void setFlightAssistEnabled(boolean value){flightAssistEnabled=value;}
     private static void checkVector(Vector3f v){
         if(v==null || !Float.isFinite(v.x)||!Float.isFinite(v.y)||!Float.isFinite(v.z))
@@ -54,21 +59,28 @@ public final class FlightPhysics {
     }
     private static float clamp(float v,float lo,float hi){return Float.isFinite(v)?Math.max(lo,Math.min(hi,v)):0;}
     private static float blend(float response,float dt){return 1-(float)Math.exp(-response*dt);}
-    private static float stick(float value){
+    private float stick(float value){
         value=clamp(value,-1,1);float a=Math.abs(value);
-        return a<=0.05f?0:Math.signum(value)*(a-0.05f)/0.95f;
+        float deadzone=alxb.flighttraining.game.config.GameSettings.get().fraction(alxb.flighttraining.game.config.GameSettings.Option.DEADZONE);
+        return a<=deadzone?0:Math.signum(value)*(a-deadzone)/(1-deadzone);
     }
     private float requestedPitch(){
         if(aiInput!=null)return clamp(aiInput.getPitch(),-1,1);
-        float key=(input.pitchUp?1:0)-(input.pitchDown?1:0);return key!=0?key:stick(input.pitchInput);
+        float key=(input.pitchUp?1:0)-(input.pitchDown?1:0);var settings=alxb.flighttraining.game.config.GameSettings.get();
+        float value=key!=0?key:stick(input.pitchInput)*(settings.enabled(alxb.flighttraining.game.config.GameSettings.Option.INVERT_PITCH)?-1:1);
+        return clamp(value*settings.fraction(alxb.flighttraining.game.config.GameSettings.Option.PITCH),-1,1);
     }
     private float requestedRoll(){
         if(aiInput!=null)return clamp(aiInput.getRoll(),-1,1);
-        float key=(input.rollLeft?1:0)-(input.rollRight?1:0);return key!=0?key:stick(input.rollInput);
+        float key=(input.rollLeft?1:0)-(input.rollRight?1:0);var settings=alxb.flighttraining.game.config.GameSettings.get();
+        float value=key!=0?key:stick(input.rollInput)*(settings.enabled(alxb.flighttraining.game.config.GameSettings.Option.INVERT_ROLL)?-1:1);
+        return clamp(value*settings.fraction(alxb.flighttraining.game.config.GameSettings.Option.ROLL),-1,1);
     }
     private float requestedYaw(){
         if(aiInput!=null)return clamp(aiInput.getYaw(),-1,1);
-        float key=(input.yawLeft?1:0)-(input.yawRight?1:0);return key!=0?key:stick(input.yawInput);
+        float key=(input.yawLeft?1:0)-(input.yawRight?1:0);var settings=alxb.flighttraining.game.config.GameSettings.get();
+        float value=key!=0?key:stick(input.yawInput)*(settings.enabled(alxb.flighttraining.game.config.GameSettings.Option.INVERT_YAW)?-1:1);
+        return clamp(value*settings.fraction(alxb.flighttraining.game.config.GameSettings.Option.YAW),-1,1);
     }
     public float pitchCommandForLoadFactor(float g){
         return g>=1?clamp((g-1)/(parameters.positiveGLimit()-1),0,1)
@@ -83,7 +95,7 @@ public final class FlightPhysics {
         if(input!=null){
             int commands=input.drainSystemCommands();
             systems.command(commands,getSpeed());
-            if((commands&AircraftSystems.ENGINE)!=0)engineRunning=!engineRunning;
+            if((commands&AircraftSystems.ENGINE)!=0)setEngineRunning(!isEngineRunning());
         }
         lastFrameDt=Math.min(tpf,0.25f);
         float remaining=lastFrameDt;
@@ -107,11 +119,11 @@ public final class FlightPhysics {
         float cl=AerodynamicModel.liftCoefficient(alpha,mach);
         cl+=systems.getFlaps()*.55f;
         float cd=AerodynamicModel.dragCoefficient(alpha,beta,cl,mach,parameters)
-                +systemsDragCoefficient();
+                +systemsDragCoefficient()+getDamage().extraDrag();
         lastThrust=thrustForPower(enginePower,mach,atmosphere.densityKgM3())
-                * (engineRunning?1:clamp(enginePower/0.03f,0,1));
+                * (systems.combat().engineEffectiveness(true)+systems.combat().engineEffectiveness(false))*.5f;
         Vector3f nonGravity=forward.mult(lastThrust);
-        lastLift=q*parameters.wingAreaM2()*cl*(1-.35f*systems.getWingFold());lastDrag=q*parameters.wingAreaM2()*cd;
+        lastLift=q*parameters.wingAreaM2()*cl*(1-.35f*systems.getWingFold())*(getDamage().liftFraction(true)+getDamage().liftFraction(false))*.5f;lastDrag=q*parameters.wingAreaM2()*cd;
         if(speed>0.1f){
             Vector3f direction=air.divide(speed);
             Vector3f liftDirection=right.cross(direction);
@@ -143,7 +155,7 @@ public final class FlightPhysics {
             if(Math.abs(input.throttleDownInput)>0.05f)change-=input.throttleDownInput;
             throttle=clamp(throttle+change*dt*0.4f,0,1);
         }
-        float target=engineRunning?throttle:0;
+        float target=isEngineRunning()?throttle:0;
         enginePower+=(target-enginePower)*blend(target>enginePower?1.2f:2.5f,dt);
     }
     private void updateRotation(float dt,Quaternion rotation,Vector3f air,float alpha,float beta,
@@ -151,7 +163,10 @@ public final class FlightPhysics {
         float speed=air.length();
         float authority=clamp((float)Math.sqrt(q/12000f),0,1);
         float separated=clamp((Math.abs(alpha)-(float)Math.toRadians(24))/(float)Math.toRadians(35),0,1);
-        float controlAuthority=authority*(1-0.75f*separated);
+        boolean arcade=input!=null&&alxb.flighttraining.game.config.GameSettings.get().value(alxb.flighttraining.game.config.GameSettings.Option.MODEL).equals("Arcade");
+        float controlAuthority=arcade?Math.max(.35f,authority)*(1-.35f*separated):authority*(1-0.75f*separated);
+        controlAuthority*=systems.combat().controlHydraulics()*(getDamage().destroyed()?0:1);
+        float elevator=getDamage().tailAuthority(),rudder=getDamage().finAuthority();
         // Winkelgeschwindigkeit des Geschwindigkeitsvektors: folgt der durch Kräfte entstehenden Kurve.
         // Vereinfachte aerodynamische Stabilisierung, nicht die volle Momentengleichung eines Jets.
         Vector3f pathRate=speed>30?air.cross(acceleration).divideLocal(speed*speed):new Vector3f();
@@ -168,18 +183,24 @@ public final class FlightPhysics {
             pitchSpeed=yawSpeed=rollSpeed=0;
             return;
         }
-        if(flightAssistEnabled){
-            float desiredCl=requestedLoad()*parameters.massKg()*G/Math.max(100,q*parameters.wingAreaM2()*(1-.35f*systems.getWingFold()))
+        boolean limit=input==null||alxb.flighttraining.game.config.GameSettings.get().enabled(alxb.flighttraining.game.config.GameSettings.Option.G_LIMIT);
+        if(flightAssistEnabled && limit && getDamage().health(FCS)>.4f && getDamage().health(AIR_DATA)>.25f && systems.combat().electrical()){
+            float desiredCl=requestedLoad()*parameters.massKg()*G/Math.max(100,q*parameters.wingAreaM2()*(1-.35f*systems.getWingFold())*Math.max(.1f,(getDamage().liftFraction(true)+getDamage().liftFraction(false))*.5f))
                     -systems.getFlaps()*.55f;
             float desiredAlpha=AerodynamicModel.alphaForLift(desiredCl,mach);
             targetPitch=localPathRate.x+(desiredAlpha-alpha)*3.2f*controlAuthority;
         }else targetPitch=localPathRate.x+pitchCommand*0.65f*controlAuthority-alpha*0.2f*controlAuthority;
-        targetPitch=clamp(targetPitch,-0.7f,0.7f);
-        float targetYaw=localPathRate.y-beta*2.5f*authority+yawCommand*0.25f*controlAuthority;
+        targetPitch=clamp(targetPitch*elevator,-0.7f,0.7f);
+        float targetYaw=localPathRate.y-beta*2.5f*authority*rudder+yawCommand*0.25f*controlAuthority*rudder;
         float targetRoll=rollCommand*(float)Math.toRadians(150)*controlAuthority;
         pitchSpeed+=(targetPitch-pitchSpeed)*blend(8,dt);
         yawSpeed+=(clamp(targetYaw,-0.6f,0.6f)-yawSpeed)*blend(7,dt);
-        rollSpeed+=(targetRoll-rollSpeed)*blend(10,dt);
+        rollSpeed+=(targetRoll-rollSpeed)*blend(3+7*Math.min(getDamage().liftFraction(true),getDamage().liftFraction(false)),dt);
+        float inertiaRoll=parameters.massKg()*parameters.aerodynamicSpanM()*parameters.aerodynamicSpanM()/12f;
+        float unbalancedLift=q*parameters.wingAreaM2()*clamp(AerodynamicModel.liftCoefficient(alpha,mach)+systems.getFlaps()*.55f,-1.6f,1.6f)*.5f*(getDamage().liftFraction(false)-getDamage().liftFraction(true));
+        rollSpeed+=clamp(unbalancedLift*parameters.aerodynamicSpanM()*.22f/inertiaRoll,-4,4)*dt;
+        yawSpeed+=(systems.combat().engineEffectiveness(false)-systems.combat().engineEffectiveness(true))*.12f*dt;
+        pitchSpeed+=(1-elevator)*-.15f*authority*dt;
         Vector3f rates=new Vector3f(pitchSpeed,yawSpeed,rollSpeed);
         float magnitude=rates.length();
         if(magnitude>0.000001f){
@@ -219,6 +240,8 @@ public final class FlightPhysics {
         float forwardSpeed=velocity.dot(plane.getWorldRotation().mult(new Vector3f(0,0,-1)));
         systems.groundContact(contact,forwardSpeed,lastFrameDt);
         if(contact){
+            if(!getDamage().destroyed()&&(velocity.y<-(systems.getGear()>.99f?8:4)||up.y<.4f&&getSpeed()>25))
+                getDamage().hit(new Vector3f(),AirframeDamage.Weapon.CRASH,1.5f);
             world=world.clone();world.y=groundHeight+clearance;
             plane.setLocalTranslation(plane.getParent()==null?world:plane.getParent().worldToLocal(world,new Vector3f()));
             positionX=world.x;positionY=world.y;positionZ=world.z;publishedPosition.set(world);
@@ -248,7 +271,8 @@ public final class FlightPhysics {
     public float getVerticalSpeed(){return velocity.y;}
     public float getFlightPathAngle(){return (float)Math.toDegrees(Math.atan2(velocity.y,Math.hypot(velocity.x,velocity.z)));}
     public float getThrottle(){return throttle;}
-    public float getEnginePower(){return enginePower;}
+    public float getEnginePower(){return enginePower*(systems.combat().engineEffectiveness(true)+systems.combat().engineEffectiveness(false))*.5f;}
+    public float getEnginePower(boolean left){return enginePower*systems.combat().engineEffectiveness(left);}
     public float getPitchSpeed(){return pitchSpeed;}
     public float getNormalG(){return normalG;}
     public float getThrustN(){return lastThrust;}

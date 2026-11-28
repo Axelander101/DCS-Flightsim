@@ -13,3 +13,16 @@ dependencies {
     runtimeOnly libs.jmeJogg
     runtimeOnly libs.jmePlugins
 }
+
+// Deterministic component/physics checks plus a real loopback multiplayer session.
+tasks.register('combatChecks', JavaExec) {
+    group = 'verification'
+    description = 'Checks component damage, missiles, physics, remote replicas and host combat.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'alxb.flighttraining.game.combat.CombatRegressionSuite'
+    args file('src/main/resources').absolutePath
+    systemProperty 'java.awt.headless', 'true'
+    systemProperty 'dsc.settingsFile', layout.buildDirectory.file('combat-checks/settings.json').get().asFile.absolutePath
+    systemProperty 'dsc.profileDirectory', layout.buildDirectory.dir('combat-checks/profiles').get().asFile.absolutePath
+}
